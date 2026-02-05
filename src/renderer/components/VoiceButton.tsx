@@ -18,6 +18,7 @@ export interface VoiceButtonProps {
 
 const RIPPLE_COUNT = 3;
 const RIPPLE_DURATION = 2;
+const INACTIVITY_SEC = 5;
 
 export default function VoiceButton({
   onTranscript,
@@ -29,6 +30,14 @@ export default function VoiceButton({
   const [liveTranscript, setLiveTranscript] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const recorderRef = useRef<VoiceRecorder | null>(null);
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+  }, []);
 
   const handleStateChange = useCallback((s: VoiceRecorderState) => {
     setState(s);
@@ -36,18 +45,28 @@ export default function VoiceButton({
       setLiveTranscript('');
       if (s === 'idle') setErrorMessage('');
     }
-  }, []);
+    if (s !== 'listening') clearInactivityTimer();
+  }, [clearInactivityTimer]);
 
   const handleTranscript = useCallback(
     (text: string, isFinal: boolean) => {
       setLiveTranscript(text);
       onTranscript?.(text, isFinal);
+      // Reset inactivity timer on any speech
+      if (recorderRef.current?.state === 'listening') {
+        clearInactivityTimer();
+        inactivityTimerRef.current = setTimeout(() => {
+          inactivityTimerRef.current = null;
+          recorderRef.current?.stop();
+        }, INACTIVITY_SEC * 1000);
+      }
     },
-    [onTranscript]
+    [onTranscript, clearInactivityTimer]
   );
 
   const handleResult = useCallback(
     (text: string) => {
+      setLiveTranscript('');
       onResult?.(text);
     },
     [onResult]
@@ -56,6 +75,16 @@ export default function VoiceButton({
   const handleError = useCallback((message: string) => {
     setErrorMessage(message);
   }, []);
+
+  // Start inactivity timer when entering listening; reset on any transcript
+  useEffect(() => {
+    if (state !== 'listening') return;
+    inactivityTimerRef.current = setTimeout(() => {
+      inactivityTimerRef.current = null;
+      recorderRef.current?.stop();
+    }, INACTIVITY_SEC * 1000);
+    return clearInactivityTimer;
+  }, [state, clearInactivityTimer]);
 
   useEffect(() => {
     if (!isVoiceInputAvailable()) {
@@ -78,10 +107,11 @@ export default function VoiceButton({
     );
     recorderRef.current = recorder;
     return () => {
+      clearInactivityTimer();
       recorder.stop();
       recorderRef.current = null;
     };
-  }, [handleStateChange, handleTranscript, handleResult, handleError, language]);
+  }, [handleStateChange, handleTranscript, handleResult, handleError, language, clearInactivityTimer]);
 
   const toggle = useCallback(() => {
     const r = recorderRef.current;
@@ -119,29 +149,33 @@ export default function VoiceButton({
 
       {/* Button container with ripples when listening */}
       <motion.div
-        className="relative flex items-center justify-center"
+        className="relative flex items-center justify-center w-[72px] h-[72px]"
         initial={false}
         animate={{ scale: 1 }}
       >
-        {/* Expanding ripples — only when listening */}
+        {/* Centered expanding ripples — glow behind button when listening */}
         {state === 'listening' &&
           Array.from({ length: RIPPLE_COUNT }).map((_, i) => (
-            <motion.div
+            <div
               key={i}
-              className="absolute inset-0 rounded-full bg-gradient-to-br from-accent-primary/40 to-accent-info/30 pointer-events-none"
-              initial={{ scale: 0.6, opacity: 0.6 }}
-              animate={{
-                scale: 2.2 + i * 0.3,
-                opacity: 0,
-              }}
-              transition={{
-                duration: RIPPLE_DURATION,
-                repeat: Infinity,
-                delay: (i * RIPPLE_DURATION) / RIPPLE_COUNT,
-                ease: 'easeOut',
-              }}
-              style={{ width: 72, height: 72, margin: -36 }}
-            />
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[88px] h-[88px] pointer-events-none flex items-center justify-center"
+              aria-hidden
+            >
+              <motion.div
+                className="absolute inset-0 rounded-full bg-gradient-to-br from-accent-primary/35 to-accent-info/25"
+                initial={{ scale: 0.7, opacity: 0.5 }}
+                animate={{
+                  scale: 2.4 + i * 0.25,
+                  opacity: 0,
+                }}
+                transition={{
+                  duration: RIPPLE_DURATION,
+                  repeat: Infinity,
+                  delay: (i * RIPPLE_DURATION) / RIPPLE_COUNT,
+                  ease: 'easeOut',
+                }}
+              />
+            </div>
           ))}
 
         {/* Main button */}
