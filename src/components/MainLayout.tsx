@@ -81,6 +81,12 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
     [config?.familyMembers]
   );
 
+  /** Calendars the user can write to (owner or writer). Used for creating events. */
+  const writableCalendars = useMemo(
+    () => calendarList.filter((c) => c.accessRole === 'owner' || c.accessRole === 'writer'),
+    [calendarList]
+  );
+
   // Apply theme (pastel gradient + dark class for semantics)
   useEffect(() => {
     if (!config) return;
@@ -313,13 +319,15 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
 
   const getCalendarIdForMember = useCallback(
     (memberId: string | null): string | undefined => {
-      if (!memberId || calendarList.length === 0) return calendarList[0]?.id;
+      const defaultId = writableCalendars[0]?.id;
+      if (!memberId || writableCalendars.length === 0) return defaultId;
       const member = familyMembers.find((m) => m.id === memberId);
-      if (!member?.calendarIds?.length) return calendarList[0]?.id;
+      if (!member?.calendarIds?.length) return defaultId;
       const first = member.calendarIds[0];
-      return calendarList.some((c) => c.id === first) ? first : calendarList[0]?.id;
+      const isWritable = writableCalendars.some((c) => c.id === first);
+      return isWritable ? first : defaultId;
     },
-    [calendarList, familyMembers]
+    [writableCalendars, familyMembers]
   );
 
   const handleConfirmEvent = useCallback(
@@ -546,7 +554,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         initialEvent={eventToConfirm ?? ({ title: '', startDate: format(new Date(), 'yyyy-MM-dd'), startTime: null, endTime: null, durationMinutes: null, attendee: null, notes: null } as ParsedEvent)}
         familyMembers={familyMembers}
         getCalendarIdForMember={getCalendarIdForMember}
-        defaultCalendarId={calendarList[0]?.id}
+        defaultCalendarId={writableCalendars[0]?.id}
         onConfirm={handleConfirmEvent}
         onCancel={() => {
           setEventToConfirm(null);

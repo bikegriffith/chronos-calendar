@@ -174,6 +174,26 @@ export async function getEvents(
   }
 }
 
+/** Browser's IANA time zone for interpreting local dateTime values. */
+function getLocalTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC'
+  } catch {
+    return 'UTC'
+  }
+}
+
+/** Ensure start/end have timeZone when dateTime is set (Google API requirement). */
+function normalizeEventTimes<T extends { dateTime?: string; date?: string; timeZone?: string }>(
+  start: T,
+  end: T
+): { start: T; end: T } {
+  const tz = getLocalTimeZone()
+  const withTz = <S extends { dateTime?: string; date?: string; timeZone?: string }>(s: S): S =>
+    s.dateTime && !s.timeZone ? { ...s, timeZone: tz } as S : s
+  return { start: withTz(start), end: withTz(end) }
+}
+
 export async function createEvent(
   calendarId: string,
   event: {
@@ -187,10 +207,11 @@ export async function createEvent(
   try {
     const encodedId = encodeURIComponent(calendarId)
     const url = `${CALENDAR_API_BASE}/calendars/${encodedId}/events`
+    const { start, end } = normalizeEventTimes(event.start, event.end)
     const body = {
       summary: event.summary,
-      start: event.start,
-      end: event.end,
+      start,
+      end,
       ...(event.description && { description: event.description }),
       ...(event.attendees?.length && { attendees: event.attendees }),
     }
@@ -220,9 +241,16 @@ export async function updateEvent(
     const encodedCalId = encodeURIComponent(calendarId)
     const encodedEventId = encodeURIComponent(eventId)
     const url = `${CALENDAR_API_BASE}/calendars/${encodedCalId}/events/${encodedEventId}`
+    let normalizedPatch = patch
+    if (patch.start ?? patch.end) {
+      const start = patch.start ?? {}
+      const end = patch.end ?? {}
+      const { start: nStart, end: nEnd } = normalizeEventTimes(start, end)
+      normalizedPatch = { ...patch, start: nStart, end: nEnd }
+    }
     const raw = await apiRequest<NonNullable<EventsListResponse['items']>[number] & { id: string }>(url, {
       method: 'PATCH',
-      body: JSON.stringify(patch),
+      body: JSON.stringify(normalizedPatch),
     })
     return mapEventItem(raw, calendarId)
   } catch (err) {
