@@ -20,5 +20,13 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Proxy Anthropic API to avoid CORS when calling from the browser (dev only).
+    proxy: {
+      '/api/anthropic': {
+        target: 'https://api.anthropic.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/anthropic/, ''),
+      },
+    },
   },
 });

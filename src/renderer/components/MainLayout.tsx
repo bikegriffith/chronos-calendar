@@ -5,10 +5,13 @@ import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, e
 import { APP_NAME } from '@shared/constants';
 import type { FamilyMember } from '@shared/types';
 import { familyColorList } from '../styles/theme';
-import { getCalendarList, getEvents } from '../services/calendarService';
+import { getCalendarList, getEvents, createEvent } from '../services/calendarService';
 import type { CalendarAccount } from '../services/calendarService';
+import { parseTranscriptionToEvent, AIEventParserError } from '../services/aiEventParser';
+import type { ParsedEvent } from '../services/aiEventParser';
 import CalendarView from './CalendarView';
 import VoiceButton from './VoiceButton';
+import EventConfirmationModal from './EventConfirmationModal';
 
 // Default family members (can later come from store/API)
 const DEFAULT_FAMILY_MEMBERS: FamilyMember[] = [
@@ -55,6 +58,9 @@ export default function MainLayout() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [calendarColors, setCalendarColors] = useState<Record<string, string>>({});
   const [calendarNames, setCalendarNames] = useState<Record<string, string>>({});
+  const [eventToConfirm, setEventToConfirm] = useState<ParsedEvent | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const familyMembers = DEFAULT_FAMILY_MEMBERS;
 
@@ -86,7 +92,7 @@ export default function MainLayout() {
       .then(setEvents)
       .catch(() => setEvents([]))
       .finally(() => setEventsLoading(false));
-  }, [currentDate, view, calendarIds.join(',')]);
+  }, [currentDate, view, calendarIds.join(','), refreshKey]);
 
   const handleDatesSet = useCallback((dateInfo: { start: Date; view: { type: string } }) => {
     const api = calendarRef.current?.getApi();
@@ -138,6 +144,38 @@ export default function MainLayout() {
   const handleEventLongPress = useCallback((_event: import('../services/calendarService').CalendarEvent) => {
     // TODO: open edit modal
   }, []);
+
+  const handleVoiceResult = useCallback(async (text: string) => {
+    const trimmed = text?.trim();
+    if (!trimmed) return;
+    setVoiceError(null);
+    try {
+      const parsed = await parseTranscriptionToEvent(trimmed);
+      if (parsed) setEventToConfirm(parsed);
+      else setVoiceError('Could not understand that as an event. Try something like "Dentist tomorrow at 2pm".');
+    } catch (err) {
+      const message = err instanceof AIEventParserError ? err.message : 'Failed to parse. Check your API key and try again.';
+      setVoiceError(message);
+    }
+  }, []);
+
+  const getCalendarIdForMember = useCallback(
+    (memberId: string | null): string | undefined => {
+      if (!memberId || calendarList.length === 0) return calendarList[0]?.id;
+      const idx = familyMembers.findIndex((m) => m.id === memberId);
+      if (idx === -1) return calendarList[0]?.id;
+      return calendarList[Math.min(idx, calendarList.length - 1)]?.id;
+    },
+    [calendarList, familyMembers]
+  );
+
+  const handleConfirmEvent = useCallback(
+    async (calendarId: string, event: import('../store/calendarStore').NewEventInput) => {
+      await createEvent(calendarId, event);
+      setRefreshKey((k) => k + 1);
+    },
+    []
+  );
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-neutral-50">
@@ -273,12 +311,7 @@ export default function MainLayout() {
         </button>
 
         <VoiceButton
-          onResult={(text) => {
-            if (text.trim()) {
-              // TODO: use transcribed text (e.g. create event, search)
-              console.log('Voice result:', text);
-            }
-          }}
+          onResult={handleVoiceResult}
           className="-mt-2"
         />
 
@@ -299,6 +332,33 @@ export default function MainLayout() {
           ))}
         </div>
       </motion.footer>
+
+      <EventConfirmationModal
+        open={eventToConfirm !== null}
+        initialEvent={eventToConfirm ?? ({ title: '', startDate: '', startTime: null, endTime: null, durationMinutes: null, attendee: null, notes: null } as ParsedEvent)}
+        familyMembers={familyMembers}
+        getCalendarIdForMember={getCalendarIdForMember}
+        defaultCalendarId={calendarList[0]?.id}
+        onConfirm={handleConfirmEvent}
+        onCancel={() => {
+          setEventToConfirm(null);
+          setVoiceError(null);
+        }}
+        onSuccess={() => setVoiceError(null)}
+      />
+
+      {voiceError && (
+        <div className="fixed bottom-24 left-4 right-4 z-40 px-4 py-3 rounded-xl bg-neutral-800 dark:bg-neutral-dark-700 text-white text-body-sm shadow-lg flex items-center justify-between gap-3">
+          <span>{voiceError}</span>
+          <button
+            type="button"
+            onClick={() => setVoiceError(null)}
+            className="shrink-0 text-white/80 hover:text-white underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
     </div>
   );
 }
