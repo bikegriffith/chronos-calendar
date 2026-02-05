@@ -64,6 +64,14 @@ function getDateRangeForView(date: Date, viewType: ViewType): { start: string; e
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
+/** True if both dates fall in the same period for the given view (same month / week / day). */
+function isSamePeriod(a: Date, b: Date, viewType: ViewType): boolean {
+  if (viewType === 'month') return startOfMonth(a).getTime() === startOfMonth(b).getTime();
+  if (viewType === 'week') return startOfWeek(a, { weekStartsOn: 0 }).getTime() === startOfWeek(b, { weekStartsOn: 0 }).getTime();
+  if (viewType === 'day') return startOfDay(a).getTime() === startOfDay(b).getTime();
+  return false;
+}
+
 export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   const calendarRef = useRef<import('@fullcalendar/react').default | null>(null);
   const [config, setConfig] = useState<ChronosConfig | null>(null);
@@ -589,7 +597,11 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
                       onDatesSet={(start) => {
                         const api = calendarRef.current?.getApi();
                         if (api) calendarApi.current = api;
-                        setCurrentDate(start);
+                        // Only update currentDate when the visible period actually changed (e.g. user
+                        // navigated). Otherwise FullCalendar’s initial datesSet would retrigger fetch
+                        // and cause skeleton → content → skeleton.
+                        const viewType = view as 'month' | 'week' | 'day';
+                        if (!isSamePeriod(currentDate, start, viewType)) setCurrentDate(start);
                       }}
                       onEventClick={handleEventClick}
                       onEventLongPress={handleEventLongPress}
