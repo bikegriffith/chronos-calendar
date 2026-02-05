@@ -1,9 +1,10 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, useMotionValue, animate } from 'framer-motion';
 import type { CalendarApi } from '@fullcalendar/core';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay, addDays } from 'date-fns';
 import type { FamilyMember } from '@shared/types';
 import { familyColorList } from '../styles/theme';
+import { getThemeOrDefault } from '../styles/themes';
 import { getCalendarList, getEvents, createEvent, deleteEvent } from '../services/calendarService';
 import type { CalendarAccount } from '../services/calendarService';
 import { getConfig } from '../services/configService';
@@ -11,6 +12,7 @@ import { parseTranscriptionToEvent, AIEventParserError } from '../services/aiEve
 import type { ParsedEvent } from '../services/aiEventParser';
 import type { CalendarEvent as ServiceCalendarEvent } from '../services/calendarService';
 import CalendarView from './CalendarView';
+import UpcomingView from './UpcomingView';
 import VoiceButton from './VoiceButton';
 import EventConfirmationModal from './EventConfirmationModal';
 import EventDetailsPopover from './EventDetailsPopover';
@@ -20,6 +22,7 @@ import SettingsScreen from './SettingsScreen';
 import type { ChronosConfig } from '@shared/types';
 
 const VIEW_MAP = {
+  upcoming: 'dayGridMonth',
   month: 'dayGridMonth',
   week: 'timeGridWeek',
   day: 'timeGridDay',
@@ -33,7 +36,10 @@ const SPRING_TRANSITION = { type: 'spring' as const, damping: 25, stiffness: 300
 function getDateRangeForView(date: Date, viewType: ViewType): { start: string; end: string } {
   let start: Date;
   let end: Date;
-  if (viewType === 'month') {
+  if (viewType === 'upcoming') {
+    start = startOfDay(date);
+    end = endOfDay(addDays(date, 3));
+  } else if (viewType === 'month') {
     start = startOfMonth(date);
     end = endOfMonth(date);
   } else if (viewType === 'week') {
@@ -51,7 +57,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   const [config, setConfig] = useState<ChronosConfig | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<ViewType>('month');
+  const [view, setView] = useState<ViewType>('upcoming');
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const pinchStartDistance = useRef<number | null>(null);
@@ -75,11 +81,12 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
     [config?.familyMembers]
   );
 
-  // Apply dark mode from config
+  // Apply theme (pastel gradient + dark class for semantics)
   useEffect(() => {
     if (!config) return;
-    const dark = config.settings.darkMode;
-    if (dark) document.documentElement.classList.add('dark');
+    const theme = getThemeOrDefault(config.settings.theme);
+    document.documentElement.setAttribute('data-theme', theme.id);
+    if (theme.dark) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [config]);
 
@@ -205,7 +212,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
 
   const changeView = useCallback((v: ViewType) => {
     setView(v);
-    calendarApi.current?.changeView(VIEW_MAP[v]);
+    if (v !== 'upcoming') calendarApi.current?.changeView(VIEW_MAP[v]);
   }, []);
 
   const handlePinchEnd = useCallback(
@@ -315,7 +322,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   );
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[var(--chronos-bg)]">
+    <div className="flex flex-col h-screen overflow-hidden bg-transparent">
       {/* Single compact bar: filters (left) | date (center) | settings (right) — liquid glass */}
       <motion.header
         initial={{ y: -12, opacity: 0 }}
@@ -370,11 +377,13 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
           dateTime={currentDate.toISOString()}
           className="font-display text-heading-md font-semibold text-neutral-900 dark:text-neutral-dark-50 tabular-nums text-center tracking-tight shrink-0 px-2"
         >
-          {view === 'month'
-            ? format(currentDate, 'MMMM yyyy')
-            : view === 'week'
-              ? `${format(currentDate, 'MMM d')} – ${format(new Date(currentDate.getTime() + 6 * 24 * 60 * 60 * 1000), 'MMM d, yyyy')}`
-              : format(currentDate, 'EEEE, MMM d, yyyy')}
+          {view === 'upcoming'
+            ? `${format(currentDate, 'EEE MMM d')} – ${format(addDays(currentDate, 3), 'EEE MMM d, yyyy')}`
+            : view === 'month'
+              ? format(currentDate, 'MMMM yyyy')
+              : view === 'week'
+                ? `${format(currentDate, 'MMM d')} – ${format(new Date(currentDate.getTime() + 6 * 24 * 60 * 60 * 1000), 'MMM d, yyyy')}`
+                : format(currentDate, 'EEEE, MMM d, yyyy')}
         </time>
 
         {/* Right: settings — same width as left for balance */}
@@ -422,7 +431,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         >
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={`${view}-${currentDate.getFullYear()}-${currentDate.getMonth()}`}
+              key={view === 'upcoming' ? `${view}-${currentDate.getTime()}` : `${view}-${currentDate.getFullYear()}-${currentDate.getMonth()}`}
               initial={{ opacity: 0, x: navDirection * 60 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -navDirection * 40 }}
@@ -435,22 +444,34 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
                 </div>
               )}
               <div className="h-full min-h-0 pointer-events-auto">
-                <CalendarView
-                  calendarRef={calendarRef}
-                  events={filteredEvents}
-                  calendarColors={colorsAndNamesFromMembers.colors}
-                  calendarNames={colorsAndNamesFromMembers.names}
-                  viewType={view}
-                  currentDate={currentDate}
-                  onDatesSet={(start) => {
-                    const api = calendarRef.current?.getApi();
-                    if (api) calendarApi.current = api;
-                    setCurrentDate(start);
-                  }}
-                  onEventClick={handleEventClick}
-                  onEventLongPress={handleEventLongPress}
-                  onDateClick={handleDateClick}
-                />
+                {view === 'upcoming' ? (
+                  <UpcomingView
+                    events={filteredEvents}
+                    calendarColors={colorsAndNamesFromMembers.colors}
+                    calendarNames={colorsAndNamesFromMembers.names}
+                    currentDate={currentDate}
+                    onEventClick={handleEventClick}
+                    onEventLongPress={handleEventLongPress}
+                    onDateClick={handleDateClick}
+                  />
+                ) : (
+                  <CalendarView
+                    calendarRef={calendarRef}
+                    events={filteredEvents}
+                    calendarColors={colorsAndNamesFromMembers.colors}
+                    calendarNames={colorsAndNamesFromMembers.names}
+                    viewType={view as 'month' | 'week' | 'day'}
+                    currentDate={currentDate}
+                    onDatesSet={(start) => {
+                      const api = calendarRef.current?.getApi();
+                      if (api) calendarApi.current = api;
+                      setCurrentDate(start);
+                    }}
+                    onEventClick={handleEventClick}
+                    onEventLongPress={handleEventLongPress}
+                    onDateClick={handleDateClick}
+                  />
+                )}
               </div>
             </motion.div>
           </AnimatePresence>
@@ -462,7 +483,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         initial={{ y: 16, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.04 }}
-        className="chronos-glass-bar fixed bottom-0 left-0 right-0 z-30 flex items-center justify-between gap-3 px-4 py-3 min-h-[76px] border-t border-white/20 dark:border-white/5"
+        className="chronos-glass-bar fixed bottom-0 left-0 right-0 z-30 flex items-center justify-between gap-3 px-4 py-3 min-h-[76px] border-t border-[var(--chronos-border)]"
       >
         <motion.button
           type="button"
@@ -492,7 +513,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         />
 
         <div className="chronos-glass-pill flex items-center rounded-2xl p-1 min-h-[48px] gap-0.5">
-          {(['month', 'week', 'day'] as const).map((v) => (
+          {(['upcoming', 'month', 'week', 'day'] as const).map((v) => (
             <motion.button
               key={v}
               type="button"

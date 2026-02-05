@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, LogOut, User, Calendar, Moon, Mic } from 'lucide-react';
 import { familyColorList } from '../styles/theme';
+import { CHRONOS_THEMES, getThemeOrDefault } from '../styles/themes';
 import type { FamilyMember, ChronosConfig, AppSettings } from '@shared/types';
 import { getCalendarList } from '../services/calendarService';
 import type { CalendarAccount } from '../services/calendarService';
@@ -316,30 +317,42 @@ export default function SettingsScreen({ open, onClose, onDisconnect, onConfigCh
                 </div>
               </section>
 
-              {/* Dark mode */}
+              {/* Theme */}
               <section>
                 <h3 className="flex items-center gap-2 text-body-sm font-semibold text-neutral-500 dark:text-neutral-dark-400 uppercase tracking-wide mb-3">
-                  <Moon className="w-4 h-4" /> Appearance
+                  <Moon className="w-4 h-4" /> Theme
                 </h3>
-                <label className="flex items-center justify-between gap-4 py-2 cursor-pointer">
-                  <span className="text-body text-neutral-800 dark:text-neutral-dark-100">Dark mode</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={config.settings.darkMode}
-                    onClick={() => updateSettings({ darkMode: !config.settings.darkMode })}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${
-                      config.settings.darkMode ? 'bg-accent-primary' : 'bg-neutral-300 dark:bg-neutral-dark-600'
-                    }`}
-                  >
-                    <motion.span
-                      layout
-                      className="absolute top-1 w-4 h-4 rounded-full bg-white shadow"
-                      animate={{ left: config.settings.darkMode ? 22 : 4 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    />
-                  </button>
-                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {CHRONOS_THEMES.map((theme) => {
+                    const selected = (config.settings.theme ?? getThemeOrDefault(undefined).id) === theme.id;
+                    return (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        onClick={() => updateSettings({ theme: theme.id })}
+                        className={`rounded-xl overflow-hidden border-2 transition-all text-left min-h-[64px] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-dark-900 ${
+                          selected
+                            ? 'border-accent-primary ring-2 ring-accent-primary/30 shadow-md'
+                            : 'border-neutral-200 dark:border-neutral-dark-600 hover:border-neutral-300 dark:hover:border-neutral-dark-500'
+                        }`}
+                      >
+                        <div
+                          className="h-9 w-full shrink-0"
+                          style={{ background: theme.background }}
+                          aria-hidden
+                        />
+                        <div className="px-2 py-1.5 bg-white/90 dark:bg-neutral-dark-800/90 backdrop-blur-sm">
+                          <span className="text-body-sm font-medium text-neutral-900 dark:text-neutral-dark-50 block truncate">
+                            {theme.label}
+                          </span>
+                          <span className="text-caption text-neutral-500 dark:text-neutral-dark-400">
+                            {theme.dark ? 'Dark' : 'Light'}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </section>
 
               {/* Voice language */}

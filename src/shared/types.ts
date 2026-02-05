@@ -21,7 +21,10 @@ export interface FamilyMember {
 }
 
 export interface AppSettings {
-  darkMode: boolean;
+  /** Theme id from ChronosTheme (e.g. 'light-sky', 'dark-midnight'). Replaces darkMode. */
+  theme?: string;
+  /** @deprecated Use theme instead. Kept for migration. */
+  darkMode?: boolean;
   voiceLanguage: string;
 }
 

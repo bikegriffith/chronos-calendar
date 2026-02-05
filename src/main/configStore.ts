@@ -7,7 +7,7 @@ import Store from 'electron-store';
 import type { ChronosConfig, FamilyMember, AppSettings } from '@shared/types';
 
 const DEFAULT_SETTINGS: AppSettings = {
-  darkMode: false,
+  theme: 'light-sky',
   voiceLanguage: 'en-US',
 };
 
@@ -21,12 +21,19 @@ const store = new Store<ChronosConfig>({ name: 'chronos-config' });
 
 function getFullConfig(): ChronosConfig {
   const partial = store.store as Partial<ChronosConfig>;
+  const rawSettings = partial.settings && typeof partial.settings === 'object' ? partial.settings : {};
+  // Migrate legacy darkMode to theme
+  const theme =
+    rawSettings.theme ??
+    (rawSettings.darkMode === true ? 'dark-midnight' : rawSettings.darkMode === false ? 'light-sky' : undefined) ??
+    DEFAULT_SETTINGS.theme;
   return {
     familyMembers: Array.isArray(partial.familyMembers) ? partial.familyMembers : DEFAULT_CONFIG.familyMembers,
     familySetupComplete: Boolean(partial.familySetupComplete),
     settings: {
       ...DEFAULT_SETTINGS,
-      ...(partial.settings && typeof partial.settings === 'object' ? partial.settings : {}),
+      ...rawSettings,
+      theme,
     },
   };
 }

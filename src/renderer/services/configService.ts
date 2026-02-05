@@ -12,7 +12,7 @@ function isElectron(): boolean {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  darkMode: false,
+  theme: 'light-sky',
   voiceLanguage: typeof navigator !== 'undefined' ? navigator.language || 'en-US' : 'en-US',
 };
 
@@ -25,12 +25,18 @@ const DEFAULT_CONFIG: ChronosConfig = {
 function mergeConfig(partial: Partial<ChronosConfig> | null): ChronosConfig {
   if (!partial || typeof partial !== 'object') return DEFAULT_CONFIG;
   const rawMembers = Array.isArray(partial.familyMembers) ? partial.familyMembers : DEFAULT_CONFIG.familyMembers;
+  const rawSettings = partial.settings && typeof partial.settings === 'object' ? partial.settings : {};
+  const theme =
+    rawSettings.theme ??
+    (rawSettings.darkMode === true ? 'dark-midnight' : rawSettings.darkMode === false ? 'light-sky' : undefined) ??
+    DEFAULT_SETTINGS.theme;
   return {
     familyMembers: rawMembers.map(normalizeFamilyMember),
     familySetupComplete: Boolean(partial.familySetupComplete),
     settings: {
       ...DEFAULT_SETTINGS,
-      ...(partial.settings && typeof partial.settings === 'object' ? partial.settings : {}),
+      ...rawSettings,
+      theme,
     },
   };
 }
