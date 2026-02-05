@@ -1,14 +1,13 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin from '@fullcalendar/interaction';
 import type { CalendarApi } from '@fullcalendar/core';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay } from 'date-fns';
 import { APP_NAME } from '@shared/constants';
 import type { FamilyMember } from '@shared/types';
 import { familyColorList } from '../styles/theme';
+import { getCalendarList, getEvents } from '../services/calendarService';
+import type { CalendarAccount } from '../services/calendarService';
+import CalendarView from './CalendarView';
 
 // Default family members (can later come from store/API)
 const DEFAULT_FAMILY_MEMBERS: FamilyMember[] = [
@@ -28,16 +27,65 @@ type ViewType = keyof typeof VIEW_MAP;
 
 const SWIPE_THRESHOLD_PX = 60;
 
+function getDateRangeForView(date: Date, viewType: ViewType): { start: string; end: string } {
+  let start: Date;
+  let end: Date;
+  if (viewType === 'month') {
+    start = startOfMonth(date);
+    end = endOfMonth(date);
+  } else if (viewType === 'week') {
+    start = startOfWeek(date, { weekStartsOn: 0 });
+    end = endOfWeek(date, { weekStartsOn: 0 });
+  } else {
+    start = startOfDay(date);
+    end = endOfDay(date);
+  }
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
 export default function MainLayout() {
-  const calendarRef = useRef<FullCalendar>(null);
+  const calendarRef = useRef<import('@fullcalendar/react').default | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<ViewType>('month');
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set()); // empty = show all
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [calendarList, setCalendarList] = useState<CalendarAccount[]>([]);
+  const [events, setEvents] = useState<import('../services/calendarService').CalendarEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [calendarColors, setCalendarColors] = useState<Record<string, string>>({});
+  const [calendarNames, setCalendarNames] = useState<Record<string, string>>({});
 
   const familyMembers = DEFAULT_FAMILY_MEMBERS;
 
   const calendarApi = useRef<CalendarApi | null>(null);
+
+  useEffect(() => {
+    getCalendarList()
+      .then((list) => {
+        setCalendarList(list);
+        const colors: Record<string, string> = {};
+        const names: Record<string, string> = {};
+        list.forEach((cal, i) => {
+          colors[cal.id] = cal.backgroundColor ?? familyColorList[i % familyColorList.length].DEFAULT;
+          names[cal.id] = cal.summary || cal.id;
+        });
+        setCalendarColors(colors);
+        setCalendarNames(names);
+      })
+      .catch(() => {});
+  }, []);
+
+  const calendarIds = calendarList.map((c) => c.id);
+  useEffect(() => {
+    if (calendarIds.length === 0) return;
+    const range = getDateRangeForView(currentDate, view);
+    const colorsMap = new Map<string, string>(Object.entries(calendarColors));
+    setEventsLoading(true);
+    getEvents(calendarIds, range, colorsMap)
+      .then(setEvents)
+      .catch(() => setEvents([]))
+      .finally(() => setEventsLoading(false));
+  }, [currentDate, view, calendarIds.join(',')]);
 
   const handleDatesSet = useCallback((dateInfo: { start: Date; view: { type: string } }) => {
     const api = calendarRef.current?.getApi();
@@ -82,6 +130,13 @@ export default function MainLayout() {
     setView(v);
     calendarApi.current?.changeView(VIEW_MAP[v]);
   };
+
+  const handleEventClick = useCallback((_event: import('../services/calendarService').CalendarEvent) => {
+    // TODO: open event details modal/sheet
+  }, []);
+  const handleEventLongPress = useCallback((_event: import('../services/calendarService').CalendarEvent) => {
+    // TODO: open edit modal
+  }, []);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-neutral-50">
@@ -179,26 +234,22 @@ export default function MainLayout() {
             transition={{ duration: 0.2 }}
             className="flex-1 min-h-0 p-3"
           >
-            <div className="h-full min-h-[320px] rounded-lg overflow-hidden bg-white dark:bg-neutral-dark-900 shadow-card dark:shadow-dark-card border border-neutral-200 dark:border-neutral-dark-700">
-              <FullCalendar
-                ref={calendarRef}
-                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                initialView={VIEW_MAP[view]}
-                initialDate={currentDate}
-                datesSet={handleDatesSet}
-                headerToolbar={false}
-                height="100%"
-                firstDay={0}
-                dayMaxEvents={3}
-                moreLinkClick="popover"
-                eventClick={(arg) => arg.jsEvent.preventDefault()}
-                events={[]}
-                fixedWeekCount={false}
-                // Touch-friendly: larger hit areas via CSS
-                dayCellClassNames="min-h-[48px]"
-                slotMinWidth={48}
-                customClassNames
-                contentClassNames="chronos-calendar-content"
+            <div className="h-full min-h-[320px] relative">
+              {eventsLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-neutral-dark-900/60 rounded-xl z-10">
+                  <div className="text-body-sm text-neutral-600 dark:text-neutral-dark-400">Loading events…</div>
+                </div>
+              )}
+              <CalendarView
+                calendarRef={calendarRef}
+                events={events}
+                calendarColors={calendarColors}
+                calendarNames={calendarNames}
+                viewType={view}
+                currentDate={currentDate}
+                onDatesSet={setCurrentDate}
+                onEventClick={handleEventClick}
+                onEventLongPress={handleEventLongPress}
               />
             </div>
           </motion.div>

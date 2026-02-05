@@ -67,21 +67,133 @@ body {
 .chronos-calendar-content .fc-theme-standard th {
   border-color: var(--chronos-border-subtle);
 }
+/* Month view: large, touch-friendly date numbers */
 .chronos-calendar-content .fc-daygrid-day-number {
-  min-width: 48px;
+  min-width: 52px;
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--chronos-text);
+  border-radius: 12px;
+  margin: 2px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.chronos-calendar-content .fc-day-today .fc-daygrid-day-number {
+  background-color: var(--chronos-accent);
+  color: #fff;
+}
+.chronos-calendar-content .fc-timegrid-slot {
+  min-height: 48px;
+}
+
+/* Event blocks: 48px min height, clear contrast */
+.chronos-calendar-content .fc-event,
+.chronos-calendar-content .chronos-fc-event {
+  border-radius: 10px;
+  padding: 0;
+  min-height: 48px;
+  border: none;
+  overflow: hidden;
+  cursor: pointer;
+}
+.chronos-calendar-content .fc-event:hover,
+.chronos-calendar-content .chronos-fc-event:hover {
+  filter: brightness(0.97);
+}
+.chronos-calendar-content .fc-daygrid-event {
+  margin: 2px 4px;
+}
+
+/* Custom event content: avatar/initial + truncated title */
+.chronos-event-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+}
+.chronos-event-initial {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.chronos-event-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.chronos-event-time {
+  font-size: 0.75rem;
+  opacity: 0.9;
+  flex-shrink: 0;
+}
+.chronos-event-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* All-day: slightly different emphasis */
+.chronos-event-allday .chronos-event-title {
+  font-weight: 600;
+}
+.chronos-event-allday .chronos-event-time {
+  display: none;
+}
+/* Timed: show time first */
+.chronos-event-timed .chronos-event-body {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.chronos-event-timed .chronos-event-title {
+  white-space: normal;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* "X more" link: touch-friendly */
+.chronos-calendar-content .fc-more-link {
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 8px 12px;
   min-height: 48px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.875rem;
-  color: var(--chronos-text-muted);
+  border-radius: 10px;
+  margin: 2px 4px;
+  background: var(--chronos-border-subtle);
+  color: var(--chronos-text);
 }
-.chronos-calendar-content .fc-event {
-  border-radius: 6px;
-  padding: 2px 6px;
+.chronos-calendar-content .fc-more-link:hover {
+  background: var(--chronos-border);
 }
-.chronos-calendar-content .fc-timegrid-slot {
-  min-height: 48px;
+/* Popover for "more" events */
+.chronos-calendar-content .fc-popover {
+  border-radius: 12px;
+  box-shadow: var(--chronos-shadow-modal);
+  border: 1px solid var(--chronos-border);
+  overflow: hidden;
+}
+.chronos-calendar-content .fc-popover .fc-event {
+  margin: 4px 6px;
 }
 
 /* Hide scrollbar for filter chips row */
