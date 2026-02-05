@@ -2,6 +2,8 @@
 
 A family calendar application built with Electron, React, TypeScript, and Vite.
 
+![Chronos screenshot](./screenshot.png)
+
 ## Features
 
 - 🗓️ Calendar management
