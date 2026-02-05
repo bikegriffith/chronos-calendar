@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { familyColorList } from '../styles/theme';
 import type { FamilyMember } from '@shared/types';
+import { AVATAR_EMOJIS } from '@shared/constants';
 import { getCalendarList } from '../services/calendarService';
 import type { CalendarAccount } from '../services/calendarService';
 import { setConfig, normalizeFamilyMember } from '../services/configService';
-
-const AVATAR_EMOJIS = ['👩', '👨', '👧', '👦', '🧑', '👴', '👵', '👶', '🧒', '🦸', '🧑‍💼', '👩‍🔬', '🌟', '💜', '🌈'];
 
 function generateId(): string {
   return `fm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;

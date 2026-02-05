@@ -145,16 +145,19 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
     });
   }, [events, selectedMemberIds, memberIdByCalendarId]);
 
-  const colorsAndNamesFromMembers = useMemo(() => {
+  const colorsNamesAndAvatars = useMemo(() => {
     const colors: Record<string, string> = { ...calendarColors };
     const names: Record<string, string> = { ...calendarNames };
+    const avatars: Record<string, string> = {};
     familyMembers.forEach((m) => {
+      const avatar = m.avatar?.trim() || undefined;
       (m.calendarIds ?? []).forEach((cid) => {
         colors[cid] = m.color;
         names[cid] = m.name;
+        if (avatar) avatars[cid] = avatar;
       });
     });
-    return { colors, names };
+    return { colors, names, avatars };
   }, [familyMembers, calendarColors, calendarNames]);
 
   const toggleMember = (id: string) => {
@@ -416,7 +419,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
 
       {/* Calendar — main area with swipe-to-navigate and padding for single compact bar */}
       <main
-        className="flex-1 flex flex-col min-h-0 pb-20 overflow-hidden"
+        className="flex-1 flex flex-col min-h-0 pb-22 overflow-hidden"
         style={{ paddingTop: 56 }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMovePinch}
@@ -426,7 +429,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         }}
       >
         <motion.div
-          className="flex-1 min-h-0 p-3"
+          className="flex-1 min-h-0 p-6"
           style={{ x: dragX }}
           drag="x"
           dragConstraints={{ left: -120, right: 120 }}
@@ -453,8 +456,9 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
                 {view === 'upcoming' ? (
                   <UpcomingView
                     events={filteredEvents}
-                    calendarColors={colorsAndNamesFromMembers.colors}
-                    calendarNames={colorsAndNamesFromMembers.names}
+                    calendarColors={colorsNamesAndAvatars.colors}
+                    calendarNames={colorsNamesAndAvatars.names}
+                    calendarAvatars={colorsNamesAndAvatars.avatars}
                     currentDate={currentDate}
                     onEventClick={handleEventClick}
                     onEventLongPress={handleEventLongPress}
@@ -463,8 +467,8 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
                   <CalendarView
                     calendarRef={calendarRef}
                     events={filteredEvents}
-                    calendarColors={colorsAndNamesFromMembers.colors}
-                    calendarNames={colorsAndNamesFromMembers.names}
+                    calendarColors={colorsNamesAndAvatars.colors}
+                    calendarNames={colorsNamesAndAvatars.names}
                     viewType={view as 'month' | 'week' | 'day'}
                     currentDate={currentDate}
                     onDatesSet={(start) => {
@@ -555,7 +559,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         event={eventDetails?.event ?? null}
         anchorRect={eventDetails?.anchorRect ? { top: eventDetails.anchorRect.top, left: eventDetails.anchorRect.left, width: eventDetails.anchorRect.width, height: eventDetails.anchorRect.height } : null}
         onClose={() => setEventDetails(null)}
-        calendarName={eventDetails?.event ? colorsAndNamesFromMembers.names[eventDetails.event.calendarId] : undefined}
+        calendarName={eventDetails?.event ? colorsNamesAndAvatars.names[eventDetails.event.calendarId] : undefined}
       />
 
       <EventQuickActionsSheet

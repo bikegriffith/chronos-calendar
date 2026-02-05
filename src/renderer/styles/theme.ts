@@ -34,6 +34,41 @@ export const familyColors = {
     DEFAULT: '#FFB74D',
     dark: '#FFA726',
   },
+  rose: {
+    light: '#F8BBD9',
+    DEFAULT: '#F48FB1',
+    dark: '#EC407A',
+  },
+  teal: {
+    light: '#B2DFDB',
+    DEFAULT: '#80CBC4',
+    dark: '#4DB6AC',
+  },
+  sage: {
+    light: '#C5E1A5',
+    DEFAULT: '#9CCC65',
+    dark: '#8BC34A',
+  },
+  amber: {
+    light: '#FFE082',
+    DEFAULT: '#FFD54F',
+    dark: '#FFCA28',
+  },
+  violet: {
+    light: '#D1C4E9',
+    DEFAULT: '#B39DDB',
+    dark: '#9575CD',
+  },
+  powderBlue: {
+    light: '#B3E5FC',
+    DEFAULT: '#81D4FA',
+    dark: '#4FC3F7',
+  },
+  blush: {
+    light: '#FECDD3',
+    DEFAULT: '#FDA4AF',
+    dark: '#FB7185',
+  },
 } as const;
 
 /** Palette of family colors as a flat list for mapping (e.g. by index) */
@@ -43,6 +78,13 @@ export const familyColorList = [
   familyColors.mint,
   familyColors.lavender,
   familyColors.peach,
+  familyColors.rose,
+  familyColors.teal,
+  familyColors.sage,
+  familyColors.amber,
+  familyColors.violet,
+  familyColors.powderBlue,
+  familyColors.blush,
 ] as const;
 
 /** Neutral grays — backgrounds and surfaces */
@@ -267,6 +309,41 @@ export const tailwindTheme = {
         light: familyColors.peach.light,
         DEFAULT: familyColors.peach.DEFAULT,
         dark: familyColors.peach.dark,
+      },
+      rose: {
+        light: familyColors.rose.light,
+        DEFAULT: familyColors.rose.DEFAULT,
+        dark: familyColors.rose.dark,
+      },
+      teal: {
+        light: familyColors.teal.light,
+        DEFAULT: familyColors.teal.DEFAULT,
+        dark: familyColors.teal.dark,
+      },
+      sage: {
+        light: familyColors.sage.light,
+        DEFAULT: familyColors.sage.DEFAULT,
+        dark: familyColors.sage.dark,
+      },
+      amber: {
+        light: familyColors.amber.light,
+        DEFAULT: familyColors.amber.DEFAULT,
+        dark: familyColors.amber.dark,
+      },
+      violet: {
+        light: familyColors.violet.light,
+        DEFAULT: familyColors.violet.DEFAULT,
+        dark: familyColors.violet.dark,
+      },
+      powderBlue: {
+        light: familyColors.powderBlue.light,
+        DEFAULT: familyColors.powderBlue.DEFAULT,
+        dark: familyColors.powderBlue.dark,
+      },
+      blush: {
+        light: familyColors.blush.light,
+        DEFAULT: familyColors.blush.DEFAULT,
+        dark: familyColors.blush.dark,
       },
     },
     // Neutrals

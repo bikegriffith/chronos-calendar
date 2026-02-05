@@ -162,7 +162,7 @@ export default function VoiceButton({
               aria-hidden
             >
               <motion.div
-                className="absolute inset-0 rounded-full bg-gradient-to-br from-accent-primary/35 to-accent-info/25"
+                className="absolute inset-0 rounded-full bg-gradient-to-br from-[#90CAF9]/40 to-[#64B5F6]/30"
                 initial={{ scale: 0.7, opacity: 0.5 }}
                 animate={{
                   scale: 2.4 + i * 0.25,
@@ -189,11 +189,11 @@ export default function VoiceButton({
           animate={{
             scale: state === 'idle' ? [1, 1.03, 1] : 1,
             background: isActive
-              ? 'linear-gradient(135deg, #5B9BD5 0%, #42A5F5 50%, #64B5F6 100%)'
-              : 'linear-gradient(145deg, #5B9BD5 0%, #4A8BC2 100%)',
+              ? 'linear-gradient(135deg, #90CAF9 0%, #64B5F6 50%, #42A5F5 100%)'
+              : 'linear-gradient(145deg, #90CAF9 0%, #64B5F6 100%)',
             boxShadow: isActive
-              ? '0 0 32px rgba(91, 155, 213, 0.5), 0 8px 24px rgba(0,0,0,0.15)'
-              : '0 8px 24px rgba(91, 155, 213, 0.35), 0 4px 12px rgba(0,0,0,0.1)',
+              ? '0 0 32px rgba(144, 202, 249, 0.45), 0 8px 24px rgba(0,0,0,0.12)'
+              : '0 8px 24px rgba(144, 202, 249, 0.3), 0 4px 12px rgba(0,0,0,0.08)',
           }}
           transition={{
             scale: { duration: 2.5, repeat: state === 'idle' ? Infinity : 0, ease: 'easeInOut' },

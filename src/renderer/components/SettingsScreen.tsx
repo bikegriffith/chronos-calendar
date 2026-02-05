@@ -4,12 +4,11 @@ import { X, LogOut, User, Calendar, Moon, Mic } from 'lucide-react';
 import { familyColorList } from '../styles/theme';
 import { CHRONOS_THEMES, getThemeOrDefault } from '../styles/themes';
 import type { FamilyMember, ChronosConfig, AppSettings } from '@shared/types';
+import { AVATAR_EMOJIS } from '@shared/constants';
 import { getCalendarList } from '../services/calendarService';
 import type { CalendarAccount } from '../services/calendarService';
 import { getConfig, setConfig, normalizeFamilyMember } from '../services/configService';
 import { login, logout } from '../services/googleAuth';
-
-const AVATAR_EMOJIS = ['👩', '👨', '👧', '👦', '🧑', '👴', '👵', '👶', '🧒', '🌟', '💜', '🌈'];
 
 const VOICE_LANGUAGES: { value: string; label: string }[] = [
   { value: 'en-US', label: 'English (US)' },

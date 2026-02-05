@@ -9,6 +9,8 @@ export interface UpcomingViewProps {
   events: ServiceCalendarEvent[];
   calendarColors: Record<string, string>;
   calendarNames?: Record<string, string>;
+  /** Calendar ID → emoji avatar from family member config (optional; falls back to initial) */
+  calendarAvatars?: Record<string, string>;
   /** First day of the 4-day window (today) */
   currentDate: Date;
   onEventClick?: (event: ServiceCalendarEvent, anchorEl?: HTMLElement) => void;
@@ -85,6 +87,7 @@ export default function UpcomingView({
   events,
   calendarColors,
   calendarNames,
+  calendarAvatars,
   currentDate,
   onEventClick,
   onEventLongPress,
@@ -146,7 +149,7 @@ export default function UpcomingView({
   return (
     <div className="chronos-upcoming-view chronos-glass-card h-full min-h-0 rounded-2xl overflow-hidden flex flex-col">
       {/* Header row: day of week + date for each of 4 days */}
-      <div className="grid grid-cols-4 gap-2 px-2 pt-3 pb-2 border-b border-[var(--chronos-grid-line)] shrink-0">
+      <div className="grid grid-cols-4 gap-3 px-3 pt-4 pb-3 border-b border-[var(--chronos-grid-line)] shrink-0">
         {days.map((day) => (
           <div key={day.toISOString()} className="text-center min-w-0">
             <div className="text-xs font-semibold uppercase tracking-wider text-[var(--chronos-text-muted)]">
@@ -160,23 +163,24 @@ export default function UpcomingView({
       </div>
 
       {/* 4 columns of stacked events */}
-      <div className="grid grid-cols-4 gap-2 flex-1 min-h-0 p-2 overflow-auto">
+      <div className="grid grid-cols-4 gap-3 flex-1 min-h-0 p-3 overflow-auto">
         {days.map((day, colIndex) => {
           const dayEvents = eventsByDay.get(colIndex) ?? [];
           return (
             <div
               key={day.toISOString()}
-              className="flex flex-col gap-2 min-h-0 overflow-auto rounded-xl bg-white/40 dark:bg-white/5 border border-white/20 dark:border-white/10"
+              className="flex flex-col gap-3 min-h-0 overflow-auto rounded-xl bg-white/40 dark:bg-white/5 border border-white/20 dark:border-white/10"
               role="button"
               tabIndex={0}
               onClick={() => onDateClick?.(day)}
               onKeyDown={(e) => e.key === 'Enter' && onDateClick?.(day)}
               aria-label={`Add event for ${format(day, 'EEEE, MMM d')}`}
             >
-              <div className="p-2 flex flex-col gap-2 min-h-[120px]">
+              <div className="p-3 flex flex-col gap-3 min-h-[120px]">
                 {dayEvents.map((ev) => {
                   const color = ev.color ?? calendarColors[ev.calendarId] ?? defaultColor;
                   const memberName = calendarNames?.[ev.calendarId] ?? ev.calendarId.slice(0, 8);
+                  const avatarEmoji = calendarAvatars?.[ev.calendarId];
                   const initial = getInitial(memberName);
                   const title = (ev.summary || '(No title)').length > TITLE_MAX_CHARS
                     ? (ev.summary || '(No title)').slice(0, TITLE_MAX_CHARS - 1).trim() + '…'
@@ -188,7 +192,7 @@ export default function UpcomingView({
                     <button
                       key={ev.id}
                       type="button"
-                      className="chronos-upcoming-event text-left w-full rounded-xl min-h-[56px] p-3 border-none cursor-pointer transition-all duration-200 flex items-start gap-3 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--chronos-accent)]"
+                      className="chronos-upcoming-event text-left w-full rounded-xl min-h-[68px] py-4 px-4 border-none cursor-pointer transition-all duration-200 flex items-start gap-3 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--chronos-accent)]"
                       style={{
                         backgroundColor: `${color}22`,
                         borderLeft: `4px solid ${color}`,
@@ -203,10 +207,10 @@ export default function UpcomingView({
                       onTouchCancel={handleEventTouchEnd}
                     >
                       <span
-                        className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                        className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold leading-none ${avatarEmoji ? 'text-base' : 'text-xs'}`}
                         style={{ backgroundColor: color }}
                       >
-                        {initial}
+                        {avatarEmoji ?? initial}
                       </span>
                       <span className="flex-1 min-w-0 flex flex-col gap-0.5">
                         {!isAllDay && timeStr && (
