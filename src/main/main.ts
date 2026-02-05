@@ -1,11 +1,5 @@
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-// Get __dirname equivalent for ES modules compiled to CommonJS
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const createWindow = (): void => {
   // Create the browser window.
@@ -24,7 +18,7 @@ const createWindow = (): void => {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../../renderer/index.html'));
   }
 };
 
