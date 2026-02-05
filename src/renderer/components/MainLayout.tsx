@@ -1,11 +1,11 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, animate } from 'framer-motion';
 import type { CalendarApi } from '@fullcalendar/core';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay } from 'date-fns';
 import { APP_NAME } from '@shared/constants';
 import type { FamilyMember } from '@shared/types';
 import { familyColorList } from '../styles/theme';
-import { getCalendarList, getEvents, createEvent } from '../services/calendarService';
+import { getCalendarList, getEvents, createEvent, deleteEvent } from '../services/calendarService';
 import type { CalendarAccount } from '../services/calendarService';
 import { getConfig } from '../services/configService';
 import { parseTranscriptionToEvent, AIEventParserError } from '../services/aiEventParser';
@@ -14,6 +14,9 @@ import type { CalendarEvent as ServiceCalendarEvent } from '../services/calendar
 import CalendarView from './CalendarView';
 import VoiceButton from './VoiceButton';
 import EventConfirmationModal from './EventConfirmationModal';
+import EventDetailsPopover from './EventDetailsPopover';
+import EventQuickActionsSheet from './EventQuickActionsSheet';
+import EditEventModal from './EditEventModal';
 import SettingsScreen from './SettingsScreen';
 import type { ChronosConfig } from '@shared/types';
 
@@ -25,6 +28,8 @@ const VIEW_MAP = {
 type ViewType = keyof typeof VIEW_MAP;
 
 const SWIPE_THRESHOLD_PX = 60;
+const DRAG_THRESHOLD_PX = 80;
+const SPRING_TRANSITION = { type: 'spring' as const, damping: 25, stiffness: 300 };
 
 function getDateRangeForView(date: Date, viewType: ViewType): { start: string; end: string } {
   let start: Date;
@@ -50,6 +55,8 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   const [view, setView] = useState<ViewType>('month');
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const pinchStartDistance = useRef<number | null>(null);
+  const lastPinchDistance = useRef<number | null>(null);
   const [calendarList, setCalendarList] = useState<CalendarAccount[]>([]);
   const [events, setEvents] = useState<ServiceCalendarEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
@@ -58,6 +65,11 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   const [eventToConfirm, setEventToConfirm] = useState<ParsedEvent | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [eventDetails, setEventDetails] = useState<{ event: ServiceCalendarEvent; anchorRect: DOMRect } | null>(null);
+  const [quickActionsEvent, setQuickActionsEvent] = useState<ServiceCalendarEvent | null>(null);
+  const [eventToEdit, setEventToEdit] = useState<ServiceCalendarEvent | null>(null);
+  const [navDirection, setNavDirection] = useState(0);
+  const dragX = useMotionValue(0);
 
   const familyMembers = useMemo(
     () => (config?.familyMembers?.length ? config.familyMembers : []) as FamilyMember[],
@@ -146,8 +158,31 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   const isFiltering = selectedMemberIds.size > 0;
   const isMemberSelected = (id: string) => !isFiltering || selectedMemberIds.has(id);
 
-  const goPrev = () => calendarApi.current?.prev();
-  const goNext = () => calendarApi.current?.next();
+  const goPrev = useCallback(() => {
+    setNavDirection(-1);
+    calendarApi.current?.prev();
+  }, []);
+  const goNext = useCallback(() => {
+    setNavDirection(1);
+    calendarApi.current?.next();
+  }, []);
+
+  const onDragEnd = useCallback(
+    (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
+      const { offset, velocity } = info;
+      const shouldGoNext = offset.x < -DRAG_THRESHOLD_PX || velocity.x < -300;
+      const shouldGoPrev = offset.x > DRAG_THRESHOLD_PX || velocity.x > 300;
+      if (shouldGoNext) {
+        setNavDirection(1);
+        calendarApi.current?.next();
+      } else if (shouldGoPrev) {
+        setNavDirection(-1);
+        calendarApi.current?.prev();
+      }
+      animate(dragX, 0, SPRING_TRANSITION);
+    },
+    [dragX]
+  );
 
   const onTouchStart = (e: React.TouchEvent) => {
     setTouchStartX(e.targetTouches[0].clientX);
@@ -163,17 +198,89 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
     setTouchStartX(null);
   };
 
-  const changeView = (v: ViewType) => {
+  useEffect(() => {
+    if (navDirection === 0) return;
+    const t = setTimeout(() => setNavDirection(0), 400);
+    return () => clearTimeout(t);
+  }, [navDirection, currentDate]);
+
+  const changeView = useCallback((v: ViewType) => {
     setView(v);
     calendarApi.current?.changeView(VIEW_MAP[v]);
-  };
+  }, []);
 
-  const handleEventClick = useCallback((_event: import('../services/calendarService').CalendarEvent) => {
-    // TODO: open event details modal/sheet
+  const handlePinchEnd = useCallback(
+    (distance: number) => {
+      if (pinchStartDistance.current === null) return;
+      const start = pinchStartDistance.current;
+      pinchStartDistance.current = null;
+      const ratio = distance / start;
+      const views: ViewType[] = ['month', 'week', 'day'];
+      const idx = views.indexOf(view);
+      if (ratio > 1.2 && idx < 2) changeView(views[idx + 1]!);
+      else if (ratio < 0.8 && idx > 0) changeView(views[idx - 1]!);
+    },
+    [view, changeView]
+  );
+
+  const onTouchMovePinch = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const a = e.touches[0]!;
+      const b = e.touches[1]!;
+      const d = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+      if (pinchStartDistance.current === null) pinchStartDistance.current = d;
+      lastPinchDistance.current = d;
+    }
   }, []);
-  const handleEventLongPress = useCallback((_event: import('../services/calendarService').CalendarEvent) => {
-    // TODO: open edit modal
+  const onTouchEndPinch = useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches.length < 2) {
+        const finalDistance = lastPinchDistance.current;
+        if (pinchStartDistance.current !== null && finalDistance !== null) handlePinchEnd(finalDistance);
+        pinchStartDistance.current = null;
+        lastPinchDistance.current = null;
+      }
+    },
+    [handlePinchEnd]
+  );
+
+  const handleEventClick = useCallback((event: ServiceCalendarEvent, anchorEl?: HTMLElement) => {
+    setEventDetails(
+      anchorEl
+        ? { event, anchorRect: anchorEl.getBoundingClientRect() }
+        : { event, anchorRect: new DOMRect(0, 0, 0, 0) }
+    );
   }, []);
+  const handleEventLongPress = useCallback((event: ServiceCalendarEvent) => {
+    setEventDetails(null);
+    setQuickActionsEvent(event);
+  }, []);
+  const handleDateClick = useCallback((date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    setEventToConfirm({
+      title: '',
+      startDate: dateStr,
+      startTime: null,
+      endTime: null,
+      durationMinutes: null,
+      attendee: null,
+      notes: null,
+    });
+  }, []);
+  const handleDeleteEvent = useCallback(async (event: ServiceCalendarEvent) => {
+    try {
+      await deleteEvent(event.calendarId, event.id);
+      setRefreshKey((k) => k + 1);
+      setQuickActionsEvent(null);
+    } catch {
+      // Could show toast
+    }
+  }, []);
+  const handleEditEvent = useCallback((event: ServiceCalendarEvent) => {
+    setQuickActionsEvent(null);
+    setEventToEdit(event);
+  }, []);
+  const handleEditSaved = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const handleVoiceResult = useCallback(async (text: string) => {
     const trimmed = text?.trim();
@@ -237,14 +344,16 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <button
+          <motion.button
             type="button"
             aria-label="Settings"
             onClick={() => setSettingsOpen(true)}
             className="flex items-center justify-center w-12 h-12 rounded-full text-neutral-600 dark:text-neutral-dark-300 hover:bg-neutral-200/80 dark:hover:bg-neutral-dark-700/80 hover:text-neutral-900 dark:hover:text-neutral-dark-50 transition-colors min-h-[48px] min-w-[48px]"
+            whileTap={{ scale: 0.92 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           >
             <SettingsIcon className="w-6 h-6" />
-          </button>
+          </motion.button>
         </div>
       </motion.header>
 
@@ -296,46 +405,62 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         onConfigChange={config ? () => getConfig().then(setConfig) : undefined}
       />
 
-      {/* Calendar — main area with padding for fixed top bar + optional filter chips */}
+      {/* Calendar — main area with swipe-to-navigate and padding for fixed bars */}
       <main
-        className="flex-1 flex flex-col min-h-0 pb-20"
+        className="flex-1 flex flex-col min-h-0 pb-20 overflow-hidden"
         style={{ paddingTop: familyMembers.length > 0 ? 112 : 56 }}
         onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
+        onTouchMove={onTouchMovePinch}
+        onTouchEnd={(e) => {
+          onTouchEndPinch(e);
+          onTouchEnd(e);
+        }}
       >
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={view}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex-1 min-h-0 p-3"
-          >
-            <div className="h-full min-h-[320px] relative">
+        <motion.div
+          className="flex-1 min-h-0 p-3"
+          style={{ x: dragX }}
+          drag="x"
+          dragConstraints={{ left: -120, right: 120 }}
+          dragElastic={0.2}
+          onDragEnd={onDragEnd}
+          dragMomentum={false}
+          whileTap={{ cursor: 'grabbing' }}
+        >
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={`${view}-${currentDate.getFullYear()}-${currentDate.getMonth()}`}
+              initial={{ opacity: 0, x: navDirection * 60 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -navDirection * 40 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+              className="h-full min-h-[320px] relative"
+            >
               {eventsLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-neutral-dark-900/60 rounded-xl z-10">
                   <div className="text-body-sm text-neutral-600 dark:text-neutral-dark-400">Loading events…</div>
                 </div>
               )}
-              <CalendarView
-                calendarRef={calendarRef}
-                events={filteredEvents}
-                calendarColors={colorsAndNamesFromMembers.colors}
-                calendarNames={colorsAndNamesFromMembers.names}
-                viewType={view}
-                currentDate={currentDate}
-                onDatesSet={(start) => {
-                  const api = calendarRef.current?.getApi();
-                  if (api) calendarApi.current = api;
-                  setCurrentDate(start);
-                }}
-                onEventClick={handleEventClick}
-                onEventLongPress={handleEventLongPress}
-              />
-            </div>
-          </motion.div>
-        </AnimatePresence>
+              <div className="h-full min-h-0 pointer-events-auto">
+                <CalendarView
+                  calendarRef={calendarRef}
+                  events={filteredEvents}
+                  calendarColors={colorsAndNamesFromMembers.colors}
+                  calendarNames={colorsAndNamesFromMembers.names}
+                  viewType={view}
+                  currentDate={currentDate}
+                  onDatesSet={(start) => {
+                    const api = calendarRef.current?.getApi();
+                    if (api) calendarApi.current = api;
+                    setCurrentDate(start);
+                  }}
+                  onEventClick={handleEventClick}
+                  onEventLongPress={handleEventLongPress}
+                  onDateClick={handleDateClick}
+                />
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </motion.div>
       </main>
 
       {/* Bottom Bar — fixed */}
@@ -345,13 +470,26 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         transition={{ duration: 0.3, ease: 'easeOut', delay: 0.05 }}
         className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-between gap-2 px-4 py-3 min-h-[72px] bg-white/70 dark:bg-neutral-dark-800/80 backdrop-blur-xl border-t border-neutral-200/80 dark:border-neutral-dark-700/80"
       >
-        <button
+        <motion.button
           type="button"
-          className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 min-h-[48px] font-medium text-neutral-700 dark:text-neutral-dark-300 bg-neutral-100 dark:bg-neutral-dark-700 hover:bg-neutral-200 dark:hover:bg-neutral-dark-600 transition-colors"
+          onClick={() =>
+            setEventToConfirm({
+              title: '',
+              startDate: format(new Date(), 'yyyy-MM-dd'),
+              startTime: null,
+              endTime: null,
+              durationMinutes: null,
+              attendee: null,
+              notes: null,
+            })
+          }
+          className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 min-h-[48px] font-medium text-neutral-700 dark:text-neutral-dark-300 bg-neutral-100 dark:bg-neutral-dark-700 hover:bg-neutral-200 dark:hover:bg-neutral-dark-600 transition-colors active:scale-[0.98]"
+          whileTap={{ scale: 0.97 }}
+          whileHover={{ scale: 1.02 }}
         >
           <PlusIcon className="w-5 h-5" />
           Add Event
-        </button>
+        </motion.button>
 
         <VoiceButton
           onResult={handleVoiceResult}
@@ -361,7 +499,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
 
         <div className="flex items-center rounded-xl bg-neutral-100 dark:bg-neutral-dark-700 p-1 min-h-[48px]">
           {(['month', 'week', 'day'] as const).map((v) => (
-            <button
+            <motion.button
               key={v}
               type="button"
               onClick={() => changeView(v)}
@@ -370,16 +508,18 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
                   ? 'bg-white dark:bg-neutral-dark-600 text-neutral-900 dark:text-neutral-dark-50 shadow-sm'
                   : 'text-neutral-600 dark:text-neutral-dark-400 hover:text-neutral-900 dark:hover:text-neutral-dark-200'
               }`}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
             >
               {v}
-            </button>
+            </motion.button>
           ))}
         </div>
       </motion.footer>
 
       <EventConfirmationModal
         open={eventToConfirm !== null}
-        initialEvent={eventToConfirm ?? ({ title: '', startDate: '', startTime: null, endTime: null, durationMinutes: null, attendee: null, notes: null } as ParsedEvent)}
+        initialEvent={eventToConfirm ?? ({ title: '', startDate: format(new Date(), 'yyyy-MM-dd'), startTime: null, endTime: null, durationMinutes: null, attendee: null, notes: null } as ParsedEvent)}
         familyMembers={familyMembers}
         getCalendarIdForMember={getCalendarIdForMember}
         defaultCalendarId={calendarList[0]?.id}
@@ -390,6 +530,28 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         }}
         onSuccess={() => setVoiceError(null)}
       />
+
+      <EventDetailsPopover
+        event={eventDetails?.event ?? null}
+        anchorRect={eventDetails?.anchorRect ? { top: eventDetails.anchorRect.top, left: eventDetails.anchorRect.left, width: eventDetails.anchorRect.width, height: eventDetails.anchorRect.height } : null}
+        onClose={() => setEventDetails(null)}
+        calendarName={eventDetails?.event ? colorsAndNamesFromMembers.names[eventDetails.event.calendarId] : undefined}
+      />
+
+      <EventQuickActionsSheet
+        event={quickActionsEvent}
+        onClose={() => setQuickActionsEvent(null)}
+        onEdit={handleEditEvent}
+        onDelete={handleDeleteEvent}
+      />
+
+      {eventToEdit && (
+        <EditEventModal
+          event={eventToEdit}
+          onClose={() => setEventToEdit(null)}
+          onSaved={handleEditSaved}
+        />
+      )}
 
       {voiceError && (
         <div className="fixed bottom-24 left-4 right-4 z-40 px-4 py-3 rounded-xl bg-neutral-800 dark:bg-neutral-dark-700 text-white text-body-sm shadow-lg flex items-center justify-between gap-3">

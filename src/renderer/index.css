@@ -208,11 +208,40 @@ body {
   margin: 4px 6px;
 }
 
-/* Hide scrollbar for filter chips row */
-.scrollbar-hide {
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+/* Tappable day cells — quick add on tap */
+.chronos-calendar-content .chronos-day-cell-tappable .fc-daygrid-day-frame {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+.chronos-calendar-content .chronos-day-cell-tappable .fc-daygrid-day-frame:active {
+  background-color: var(--chronos-border-subtle);
+}
+
+/* Ripple-style tap feedback on buttons (use with active: scale) */
+.chronos-ripple {
+  position: relative;
+  overflow: hidden;
+}
+.chronos-ripple::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--chronos-ripple-x, 50%) var(--chronos-ripple-y, 50%), rgba(255, 255, 255, 0.3) 0%, transparent 60%);
+  opacity: 0;
+  transform: scale(0);
+  transition: transform 0.4s ease-out, opacity 0.3s ease-out;
+  pointer-events: none;
+}
+.chronos-ripple:active::after {
+  opacity: 1;
+  transform: scale(2);
+  transition: none;
+}
+
+/* Smooth 60fps-friendly transitions */
+@media (prefers-reduced-motion: no-preference) {
+  .chronos-calendar-content .fc-event,
+  .chronos-calendar-content .chronos-fc-event {
+    will-change: transform;
+  }
 }

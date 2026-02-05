@@ -1,9 +1,9 @@
-import { useRef, useCallback, useMemo } from 'react';
+import React, { useRef, useCallback, useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import type { EventContentArg, EventClickArg, EventApi } from '@fullcalendar/core';
+import type { EventContentArg, EventClickArg, EventApi, DateClickArg } from '@fullcalendar/core';
 import type { CalendarEvent as ServiceCalendarEvent } from '../services/calendarService';
 
 const LONG_PRESS_MS = 500;
@@ -24,11 +24,12 @@ export interface CalendarViewProps {
   calendarRef: React.RefObject<FullCalendar | null>;
   /** When the visible date range changes */
   onDatesSet?: (start: Date) => void;
-  /** Tap on event: show details */
-  onEventClick?: (event: ServiceCalendarEvent) => void;
-  /** Long-press on event: edit (touch only) */
+  /** Tap on event: show details; optional element for popover positioning */
+  onEventClick?: (event: ServiceCalendarEvent, anchorEl?: HTMLElement) => void;
+  /** Long-press on event: quick actions (edit/delete) */
   onEventLongPress?: (event: ServiceCalendarEvent) => void;
-  /** Note: Pinch-to-zoom is not supported by FullCalendar; month/week/day zoom would require custom view scaling. */
+  /** Tap on empty date cell: quick add event for that day */
+  onDateClick?: (date: Date) => void;
 }
 
 const VIEW_MAP = {
@@ -98,7 +99,7 @@ function toFullCalendarEvents(
   });
 }
 
-export default function CalendarView({
+function CalendarViewInner({
   events,
   calendarColors,
   calendarNames,
@@ -108,6 +109,7 @@ export default function CalendarView({
   onDatesSet,
   onEventClick,
   onEventLongPress,
+  onDateClick,
 }: CalendarViewProps) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
@@ -128,10 +130,18 @@ export default function CalendarView({
     (arg: EventClickArg) => {
       arg.jsEvent.preventDefault();
       const raw = (arg.event.extendedProps as { raw?: ServiceCalendarEvent }).raw;
-      if (raw && !longPressFired.current) onEventClick?.(raw);
+      if (raw && !longPressFired.current) onEventClick?.(raw, arg.el);
       longPressFired.current = false;
     },
     [onEventClick]
+  );
+
+  const handleDateClick = useCallback(
+    (arg: DateClickArg) => {
+      arg.jsEvent.preventDefault();
+      onDateClick?.(arg.date);
+    },
+    [onDateClick]
   );
 
   const handleEventDidMount = useCallback(
@@ -233,13 +243,14 @@ export default function CalendarView({
         moreLinkText={(num) => `${num} more`}
         moreLinkClick="popover"
         eventClick={handleEventClick}
+        dateClick={onDateClick ? handleDateClick : undefined}
         eventDidMount={handleEventDidMount}
         eventWillUnmount={handleEventWillUnmount}
         eventContent={renderEventContent}
         events={fcEvents}
         fixedWeekCount={false}
         slotMinWidth={48}
-        dayCellClassNames="chronos-day-cell"
+        dayCellClassNames="chronos-day-cell chronos-day-cell-tappable"
         // @ts-expect-error FullCalendar supports contentClassNames; types may be incomplete
         contentClassNames="chronos-calendar-content"
         eventClassNames="chronos-fc-event"
@@ -247,3 +258,6 @@ export default function CalendarView({
     </div>
   );
 }
+
+const CalendarView = React.memo(CalendarViewInner);
+export default CalendarView;
