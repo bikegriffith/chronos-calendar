@@ -2,13 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Chronos design system — CSS custom properties (see theme.ts) */
+@layer base {
+  :root {
+    --chronos-font-sans: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    /* Surfaces */
+    --chronos-bg: #FAFAFA;
+    --chronos-surface: #FFFFFF;
+    --chronos-surface-elevated: #FFFFFF;
+    --chronos-border: #E0E0E0;
+    --chronos-border-subtle: #EEEEEE;
+    /* Text */
+    --chronos-text: #212121;
+    --chronos-text-muted: #757575;
+    /* Accent */
+    --chronos-accent: #5B9BD5;
+    --chronos-accent-hover: #4A8BC2;
+    --chronos-focus-ring: #5B9BD5;
+    /* Shadows */
+    --chronos-shadow-card: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
+    --chronos-shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.12), 0 12px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .dark {
+    --chronos-bg: #1A2329;
+    --chronos-surface: #263238;
+    --chronos-surface-elevated: #37474F;
+    --chronos-border: #455A64;
+    --chronos-border-subtle: #37474F;
+    --chronos-text: #ECEFF1;
+    --chronos-text-muted: #78909C;
+    --chronos-accent: #7CB9E8;
+    --chronos-accent-hover: #90CAF9;
+    --chronos-focus-ring: #7CB9E8;
+    --chronos-shadow-card: 0 4px 12px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.16);
+    --chronos-shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.4), 0 12px 24px rgba(0, 0, 0, 0.24);
+  }
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--chronos-font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--chronos-bg);
+  color: var(--chronos-text);
 }
 
 #root {
