@@ -1,8 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { APP_NAME } from '@shared/constants';
+import { isAuthenticated } from './services/googleAuth';
+import LoginScreen from './components/LoginScreen';
 
 function App() {
-  const [count, setCount] = useState(0);
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    isAuthenticated()
+      .then(setAuthenticated)
+      .catch(() => setAuthenticated(false));
+  }, []);
+
+  if (authenticated === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-slate-400">Loading…</div>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return (
+      <LoginScreen onSuccess={() => setAuthenticated(true)} />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -17,12 +39,6 @@ function App() {
             <p className="text-lg text-gray-700 mb-4">
               Welcome to {APP_NAME}! Your family calendar is ready.
             </p>
-            <button
-              onClick={() => setCount((count) => count + 1)}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-            >
-              Count is {count}
-            </button>
           </div>
         </main>
       </div>

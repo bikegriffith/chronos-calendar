@@ -2,6 +2,11 @@
 
 interface Window {
   electronAPI?: {
-    // Add your electron API types here
+    googleAuth: {
+      login: () => Promise<void>;
+      logout: () => Promise<void>;
+      isAuthenticated: () => Promise<boolean>;
+      getAccessToken: () => Promise<string | null>;
+    };
   };
 }

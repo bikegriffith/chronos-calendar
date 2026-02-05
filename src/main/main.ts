@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
+import { registerGoogleAuthHandlers } from './googleAuth';
 
 const createWindow = (): void => {
   // Create the browser window.
@@ -23,7 +24,10 @@ const createWindow = (): void => {
 };
 
 // This method will be called when Electron has finished initialization
-app.on('ready', createWindow);
+app.on('ready', () => {
+  registerGoogleAuthHandlers();
+  createWindow();
+});
 
 // Quit when all windows are closed, except on macOS.
 app.on('window-all-closed', () => {
