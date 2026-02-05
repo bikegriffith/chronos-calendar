@@ -130,30 +130,22 @@ export const semantic = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Typography (system fonts)
+// Typography — Plus Jakarta Sans (modern, elegant, highly legible)
 // ---------------------------------------------------------------------------
 
 export const fontFamily = {
   sans: [
-    'SF Pro Text',
+    'Plus Jakarta Sans',
     '-apple-system',
     'BlinkMacSystemFont',
     'Segoe UI',
-    'Roboto',
-    'Oxygen',
-    'Ubuntu',
-    'Cantarell',
-    'Fira Sans',
-    'Droid Sans',
-    'Helvetica Neue',
     'sans-serif',
   ].join(', '),
   display: [
-    'SF Pro Display',
+    'Plus Jakarta Sans',
     '-apple-system',
     'BlinkMacSystemFont',
     'Segoe UI',
-    'Roboto',
     'sans-serif',
   ].join(', '),
 } as const;

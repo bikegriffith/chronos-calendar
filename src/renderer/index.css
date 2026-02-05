@@ -2,41 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Chronos design system — CSS custom properties (see theme.ts) */
+/* Chronos design system — Plus Jakarta Sans, liquid glass, soft grid */
 @layer base {
   :root {
-    --chronos-font-sans: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    --chronos-font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --chronos-font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     /* Surfaces */
-    --chronos-bg: #FAFAFA;
+    --chronos-bg: #F8FAFC;
     --chronos-surface: #FFFFFF;
     --chronos-surface-elevated: #FFFFFF;
-    --chronos-border: #E0E0E0;
-    --chronos-border-subtle: #EEEEEE;
+    --chronos-border: #E2E8F0;
+    --chronos-border-subtle: #F1F5F9;
+    /* Soft grid — barely there */
+    --chronos-grid-line: rgba(0, 0, 0, 0.06);
     /* Text */
-    --chronos-text: #212121;
-    --chronos-text-muted: #757575;
+    --chronos-text: #0F172A;
+    --chronos-text-muted: #64748B;
     /* Accent */
     --chronos-accent: #5B9BD5;
     --chronos-accent-hover: #4A8BC2;
     --chronos-focus-ring: #5B9BD5;
-    /* Shadows */
-    --chronos-shadow-card: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
-    --chronos-shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.12), 0 12px 24px rgba(0, 0, 0, 0.08);
+    /* Shadows — soft, elevated */
+    --chronos-shadow-card: 0 4px 24px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    --chronos-shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.08), 0 12px 24px rgba(0, 0, 0, 0.04);
   }
 
   .dark {
-    --chronos-bg: #1A2329;
-    --chronos-surface: #263238;
-    --chronos-surface-elevated: #37474F;
-    --chronos-border: #455A64;
-    --chronos-border-subtle: #37474F;
-    --chronos-text: #ECEFF1;
-    --chronos-text-muted: #78909C;
+    --chronos-bg: #0F172A;
+    --chronos-surface: #1E293B;
+    --chronos-surface-elevated: #334155;
+    --chronos-border: #334155;
+    --chronos-border-subtle: #1E293B;
+    --chronos-grid-line: rgba(255, 255, 255, 0.06);
+    --chronos-text: #F1F5F9;
+    --chronos-text-muted: #94A3B8;
     --chronos-accent: #7CB9E8;
     --chronos-accent-hover: #90CAF9;
     --chronos-focus-ring: #7CB9E8;
-    --chronos-shadow-card: 0 4px 12px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.16);
-    --chronos-shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.4), 0 12px 24px rgba(0, 0, 0, 0.24);
+    --chronos-shadow-card: 0 4px 24px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.1);
+    --chronos-shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.35), 0 12px 24px rgba(0, 0, 0, 0.2);
   }
 }
 
@@ -47,6 +51,72 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--chronos-bg);
   color: var(--chronos-text);
+  letter-spacing: -0.01em;
+}
+
+/* Liquid glass — frosted bars and pills */
+.chronos-glass-bar {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.58) 50%,
+    rgba(255, 255, 255, 0.65) 100%
+  );
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.6) inset,
+    0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.dark .chronos-glass-bar {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 41, 59, 0.85) 0%,
+    rgba(15, 23, 42, 0.9) 50%,
+    rgba(30, 41, 59, 0.82) 100%
+  );
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.06) inset,
+    0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.chronos-glass-pill {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.5) inset;
+}
+.dark .chronos-glass-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.chronos-glass-card {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.88) 0%,
+    rgba(255, 255, 255, 0.76) 100%
+  );
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.9) inset,
+    0 8px 32px rgba(0, 0, 0, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.02);
+}
+.dark .chronos-glass-card {
+  background: linear-gradient(
+    145deg,
+    rgba(30, 41, 59, 0.9) 0%,
+    rgba(15, 23, 42, 0.95) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
+    0 8px 32px rgba(0, 0, 0, 0.25);
 }
 
 #root {
@@ -54,36 +124,62 @@ body {
   height: 100vh;
 }
 
-/* FullCalendar — minimal, touch-friendly (48px min tap targets) */
+/* FullCalendar — soft grid, generous spacing, touch-friendly */
 .chronos-calendar-content .fc-scrollgrid-sync-table,
 .chronos-calendar-content .fc-daygrid-day-frame {
-  min-height: 48px;
+  min-height: 52px;
 }
 .chronos-calendar-content .fc .fc-button {
   min-height: 48px;
-  border-radius: 10px;
+  border-radius: 12px;
 }
+/* Soft gridlines — barely visible, no harsh lines */
 .chronos-calendar-content .fc-theme-standard td,
 .chronos-calendar-content .fc-theme-standard th {
-  border-color: var(--chronos-border-subtle);
+  border-color: var(--chronos-grid-line);
+  border-width: 1px;
 }
-/* Month view: large, touch-friendly date numbers */
+.chronos-calendar-content .fc-scrollgrid {
+  border-color: var(--chronos-grid-line);
+}
+.chronos-calendar-content .fc-scrollgrid-section > * {
+  border-color: var(--chronos-grid-line) !important;
+}
+/* Day cells — more breathing room */
+.chronos-calendar-content .fc-daygrid-day-frame {
+  padding: 6px 4px;
+  min-height: 64px;
+}
+/* Month view: date numbers — refined typography */
 .chronos-calendar-content .fc-daygrid-day-number {
-  min-width: 52px;
-  min-height: 52px;
+  min-width: 36px;
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.125rem;
+  font-size: 0.9375rem;
   font-weight: 600;
+  color: var(--chronos-text-muted);
+  border-radius: 10px;
+  margin: 4px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.chronos-calendar-content .fc-day:hover .fc-daygrid-day-number {
   color: var(--chronos-text);
-  border-radius: 12px;
-  margin: 2px;
-  transition: background-color 0.15s ease, color 0.15s ease;
 }
 .chronos-calendar-content .fc-day-today .fc-daygrid-day-number {
-  background-color: var(--chronos-accent);
+  background: linear-gradient(135deg, var(--chronos-accent) 0%, var(--chronos-accent-hover) 100%);
   color: #fff;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(91, 155, 213, 0.35);
+}
+.chronos-calendar-content .fc-col-header-cell-cushion {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--chronos-text-muted);
+  padding: 10px 4px;
 }
 .chronos-calendar-content .fc-timegrid-slot {
   min-height: 48px;
@@ -102,31 +198,33 @@ body {
 }
 .chronos-calendar-content .fc-event,
 .chronos-calendar-content .chronos-fc-event {
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 0;
   min-height: 48px;
   border: none;
   overflow: hidden;
   cursor: pointer;
   animation: chronos-event-fade-in 0.25s ease;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 .chronos-calendar-content .fc-event:hover,
 .chronos-calendar-content .chronos-fc-event:hover {
-  filter: brightness(0.97);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 .chronos-calendar-content .fc-daygrid-event {
-  margin: 2px 4px;
+  margin: 4px 6px;
 }
 
 /* Custom event content: avatar/initial + truncated title */
 .chronos-event-inner {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   min-height: 48px;
-  padding: 6px 10px;
+  padding: 8px 12px;
   box-sizing: border-box;
 }
 .chronos-event-initial {
@@ -180,41 +278,54 @@ body {
   -webkit-box-orient: vertical;
 }
 
-/* "X more" link: touch-friendly */
+/* "X more" link: touch-friendly, glass-style */
 .chronos-calendar-content .fc-more-link {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  padding: 8px 12px;
-  min-height: 48px;
+  padding: 10px 14px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  margin: 2px 4px;
-  background: var(--chronos-border-subtle);
-  color: var(--chronos-text);
+  border-radius: 12px;
+  margin: 4px 6px;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--chronos-text-muted);
+  border: 1px solid var(--chronos-grid-line);
 }
 .chronos-calendar-content .fc-more-link:hover {
-  background: var(--chronos-border);
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--chronos-text);
 }
-/* Popover for "more" events */
+.dark .chronos-calendar-content .fc-more-link {
+  background: rgba(255, 255, 255, 0.06);
+}
+.dark .chronos-calendar-content .fc-more-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+/* Popover for "more" events — glass */
 .chronos-calendar-content .fc-popover {
-  border-radius: 12px;
+  border-radius: 16px;
   box-shadow: var(--chronos-shadow-modal);
-  border: 1px solid var(--chronos-border);
+  border: 1px solid var(--chronos-grid-line);
   overflow: hidden;
+  backdrop-filter: blur(16px);
 }
 .chronos-calendar-content .fc-popover .fc-event {
   margin: 4px 6px;
 }
 
-/* Tappable day cells — quick add on tap */
+/* Tappable day cells — quick add on tap, subtle feedback */
 .chronos-calendar-content .chronos-day-cell-tappable .fc-daygrid-day-frame {
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.2s ease;
+  border-radius: 10px;
 }
 .chronos-calendar-content .chronos-day-cell-tappable .fc-daygrid-day-frame:active {
-  background-color: var(--chronos-border-subtle);
+  background-color: rgba(0, 0, 0, 0.04);
+}
+.dark .chronos-calendar-content .chronos-day-cell-tappable .fc-daygrid-day-frame:active {
+  background-color: rgba(255, 255, 255, 0.06);
 }
 
 /* Ripple-style tap feedback on buttons (use with active: scale) */

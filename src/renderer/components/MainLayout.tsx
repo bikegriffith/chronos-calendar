@@ -2,7 +2,6 @@ import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, useMotionValue, animate } from 'framer-motion';
 import type { CalendarApi } from '@fullcalendar/core';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay } from 'date-fns';
-import { APP_NAME } from '@shared/constants';
 import type { FamilyMember } from '@shared/types';
 import { familyColorList } from '../styles/theme';
 import { getCalendarList, getEvents, createEvent, deleteEvent } from '../services/calendarService';
@@ -316,87 +315,82 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   );
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-neutral-50">
-      {/* Top Bar — fixed, glass morphism */}
+    <div className="flex flex-col h-screen overflow-hidden bg-[var(--chronos-bg)]">
+      {/* Single compact bar: filters (left) | date (center) | settings (right) — liquid glass */}
       <motion.header
-        initial={{ y: -20, opacity: 0 }}
+        initial={{ y: -12, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-        className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between gap-3 px-4 py-3 min-h-[56px] bg-white/70 dark:bg-neutral-dark-800/80 backdrop-blur-xl border-b border-neutral-200/80 dark:border-neutral-dark-700/80"
+        transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="chronos-glass-bar fixed top-0 left-0 right-0 z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 py-2 min-h-[52px]"
       >
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="font-display text-heading-md font-semibold text-neutral-900 dark:text-neutral-dark-50 truncate">
-            {APP_NAME}
-          </span>
+        {/* Left: filter chips (scrollable) — same width as right for balance */}
+        <div className="flex items-center justify-start min-w-0 overflow-hidden">
+          {familyMembers.length > 0 ? (
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide max-w-full">
+              <motion.button
+                type="button"
+                onClick={() => setSelectedMemberIds(new Set())}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-body-sm font-medium transition-colors min-h-[40px] flex items-center ${
+                  !isFiltering
+                    ? 'bg-white/90 dark:bg-white/20 text-accent-primary shadow-sm'
+                    : 'bg-white/40 dark:bg-white/10 text-neutral-600 dark:text-neutral-dark-400 hover:bg-white/60 dark:hover:bg-white/15'
+                }`}
+                whileTap={{ scale: 0.96 }}
+              >
+                All
+              </motion.button>
+              {familyMembers.map((member) => {
+                const selected = isMemberSelected(member.id);
+                return (
+                  <motion.button
+                    key={member.id}
+                    type="button"
+                    onClick={() => toggleMember(member.id)}
+                    className={`shrink-0 rounded-full pl-1.5 pr-3 py-1.5 text-body-sm font-medium transition-colors min-h-[40px] flex items-center gap-1.5 border border-transparent ${selected ? '' : 'opacity-70'}`}
+                    style={{
+                      backgroundColor: selected ? `${member.color}28` : 'rgba(255,255,255,0.4)',
+                      borderColor: selected ? `${member.color}66` : 'transparent',
+                      color: selected ? 'var(--chronos-text)' : 'var(--chronos-text-muted)',
+                    }}
+                    whileTap={{ scale: 0.96 }}
+                  >
+                    <span className="text-base leading-none" aria-hidden>{member.avatar ?? '👤'}</span>
+                    {member.name}
+                  </motion.button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="w-2" aria-hidden />
+          )}
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center min-w-0">
-          <time
-            dateTime={currentDate.toISOString()}
-            className="font-display text-heading-lg font-medium text-neutral-800 dark:text-neutral-dark-100 tabular-nums"
-          >
-            {view === 'month'
-              ? format(currentDate, 'MMMM yyyy')
-              : view === 'week'
-                ? `${format(currentDate, 'MMM d')} – ${format(new Date(currentDate.getTime() + 6 * 24 * 60 * 60 * 1000), 'MMM d, yyyy')}`
-                : format(currentDate, 'EEEE, MMM d, yyyy')}
-          </time>
-        </div>
+        {/* Center: date — truly centered in viewport */}
+        <time
+          dateTime={currentDate.toISOString()}
+          className="font-display text-heading-md font-semibold text-neutral-900 dark:text-neutral-dark-50 tabular-nums text-center tracking-tight shrink-0 px-2"
+        >
+          {view === 'month'
+            ? format(currentDate, 'MMMM yyyy')
+            : view === 'week'
+              ? `${format(currentDate, 'MMM d')} – ${format(new Date(currentDate.getTime() + 6 * 24 * 60 * 60 * 1000), 'MMM d, yyyy')}`
+              : format(currentDate, 'EEEE, MMM d, yyyy')}
+        </time>
 
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Right: settings — same width as left for balance */}
+        <div className="flex items-center justify-end min-w-0">
           <motion.button
             type="button"
             aria-label="Settings"
             onClick={() => setSettingsOpen(true)}
-            className="flex items-center justify-center w-12 h-12 rounded-full text-neutral-600 dark:text-neutral-dark-300 hover:bg-neutral-200/80 dark:hover:bg-neutral-dark-700/80 hover:text-neutral-900 dark:hover:text-neutral-dark-50 transition-colors min-h-[48px] min-w-[48px]"
+            className="chronos-glass-pill flex items-center justify-center w-10 h-10 rounded-full text-neutral-600 dark:text-neutral-dark-300 hover:text-neutral-900 dark:hover:text-neutral-dark-50 transition-colors shrink-0"
             whileTap={{ scale: 0.92 }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           >
-            <SettingsIcon className="w-6 h-6" />
+            <SettingsIcon className="w-5 h-5" />
           </motion.button>
         </div>
       </motion.header>
-
-      {/* Family filter chips — below top bar; only when we have members */}
-      {familyMembers.length > 0 && (
-        <div className="fixed top-[56px] left-0 right-0 z-20 px-3 py-2 bg-white/50 dark:bg-neutral-dark-900/50 backdrop-blur-md border-b border-neutral-200/60 dark:border-neutral-dark-700/60">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            <motion.button
-              type="button"
-              onClick={() => setSelectedMemberIds(new Set())}
-              className={`shrink-0 rounded-full px-4 py-2 text-body-sm font-medium transition-colors min-h-[48px] flex items-center ${
-                !isFiltering
-                  ? 'bg-accent-primary text-white shadow-sm'
-                  : 'bg-neutral-200 dark:bg-neutral-dark-700 text-neutral-700 dark:text-neutral-dark-300 hover:bg-neutral-300 dark:hover:bg-neutral-dark-600'
-              }`}
-              whileTap={{ scale: 0.98 }}
-            >
-              All
-            </motion.button>
-            {familyMembers.map((member) => {
-              const selected = isMemberSelected(member.id);
-              return (
-                <motion.button
-                  key={member.id}
-                  type="button"
-                  onClick={() => toggleMember(member.id)}
-                  className={`shrink-0 rounded-full pl-2 pr-4 py-2 text-body-sm font-medium transition-colors min-h-[48px] flex items-center gap-2 border-2 border-transparent ${selected ? '' : 'opacity-60'}`}
-                  style={{
-                    backgroundColor: selected ? `${member.color}22` : 'transparent',
-                    borderColor: selected ? member.color : 'transparent',
-                    color: selected ? undefined : 'var(--chronos-text-muted)',
-                  }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <span className="text-lg leading-none" aria-hidden>{member.avatar ?? '👤'}</span>
-                  {/*<span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: member.color }} />*/}
-                  {member.name}
-                </motion.button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       <SettingsScreen
         open={settingsOpen}
@@ -405,10 +399,10 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         onConfigChange={config ? () => getConfig().then(setConfig) : undefined}
       />
 
-      {/* Calendar — main area with swipe-to-navigate and padding for fixed bars */}
+      {/* Calendar — main area with swipe-to-navigate and padding for single compact bar */}
       <main
         className="flex-1 flex flex-col min-h-0 pb-20 overflow-hidden"
-        style={{ paddingTop: familyMembers.length > 0 ? 112 : 56 }}
+        style={{ paddingTop: 56 }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMovePinch}
         onTouchEnd={(e) => {
@@ -463,12 +457,12 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         </motion.div>
       </main>
 
-      {/* Bottom Bar — fixed */}
+      {/* Bottom Bar — liquid glass */}
       <motion.footer
-        initial={{ y: 20, opacity: 0 }}
+        initial={{ y: 16, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.3, ease: 'easeOut', delay: 0.05 }}
-        className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-between gap-2 px-4 py-3 min-h-[72px] bg-white/70 dark:bg-neutral-dark-800/80 backdrop-blur-xl border-t border-neutral-200/80 dark:border-neutral-dark-700/80"
+        transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.04 }}
+        className="chronos-glass-bar fixed bottom-0 left-0 right-0 z-30 flex items-center justify-between gap-3 px-4 py-3 min-h-[76px] border-t border-white/20 dark:border-white/5"
       >
         <motion.button
           type="button"
@@ -483,9 +477,9 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
               notes: null,
             })
           }
-          className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 min-h-[48px] font-medium text-neutral-700 dark:text-neutral-dark-300 bg-neutral-100 dark:bg-neutral-dark-700 hover:bg-neutral-200 dark:hover:bg-neutral-dark-600 transition-colors active:scale-[0.98]"
+          className="chronos-glass-pill flex items-center justify-center gap-2 rounded-2xl px-4 py-3 min-h-[48px] font-medium text-neutral-800 dark:text-neutral-dark-200 transition-colors"
           whileTap={{ scale: 0.97 }}
-          whileHover={{ scale: 1.02 }}
+          whileHover={{ scale: 1.01 }}
         >
           <PlusIcon className="w-5 h-5" />
           Add Event
@@ -497,15 +491,15 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
           className="-mt-2"
         />
 
-        <div className="flex items-center rounded-xl bg-neutral-100 dark:bg-neutral-dark-700 p-1 min-h-[48px]">
+        <div className="chronos-glass-pill flex items-center rounded-2xl p-1 min-h-[48px] gap-0.5">
           {(['month', 'week', 'day'] as const).map((v) => (
             <motion.button
               key={v}
               type="button"
               onClick={() => changeView(v)}
-              className={`rounded-lg px-3 py-2 text-body-sm font-medium capitalize min-h-[48px] min-w-[48px] transition-colors ${
+              className={`rounded-xl px-3 py-2 text-body-sm font-medium capitalize min-h-[44px] min-w-[48px] transition-colors ${
                 view === v
-                  ? 'bg-white dark:bg-neutral-dark-600 text-neutral-900 dark:text-neutral-dark-50 shadow-sm'
+                  ? 'bg-white/90 dark:bg-white/20 text-neutral-900 dark:text-neutral-dark-50 shadow-sm'
                   : 'text-neutral-600 dark:text-neutral-dark-400 hover:text-neutral-900 dark:hover:text-neutral-dark-200'
               }`}
               whileTap={{ scale: 0.95 }}

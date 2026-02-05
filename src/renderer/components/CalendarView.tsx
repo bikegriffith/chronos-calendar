@@ -228,7 +228,7 @@ function CalendarViewInner({
   }, []);
 
   return (
-    <div className="chronos-calendar-view h-full min-h-0 rounded-xl overflow-hidden bg-white dark:bg-neutral-dark-900 shadow-card dark:shadow-dark-card border border-neutral-200 dark:border-neutral-dark-700">
+    <div className="chronos-calendar-view chronos-glass-card h-full min-h-0 rounded-2xl overflow-hidden">
       <FullCalendar
         ref={calendarRef as React.RefObject<InstanceType<typeof FullCalendar>>}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
