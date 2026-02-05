@@ -3,7 +3,7 @@
  * Persisted in localStorage.
  */
 
-import type { ChronosConfig, FamilyMember, AppSettings } from '@shared/types'
+import type { ChronosConfig, FamilyMember, AppSettings, OnboardingStep } from '@shared/types'
 
 const STORAGE_KEY = 'chronos-config'
 
@@ -16,6 +16,8 @@ const DEFAULT_CONFIG: ChronosConfig = {
   familyMembers: [],
   familySetupComplete: false,
   settings: DEFAULT_SETTINGS,
+  onboardingComplete: false,
+  onboardingStep: 0,
 }
 
 function mergeConfig(partial: Partial<ChronosConfig> | null): ChronosConfig {
@@ -35,7 +37,19 @@ function mergeConfig(partial: Partial<ChronosConfig> | null): ChronosConfig {
       ...rawSettings,
       theme,
     },
+    onboardingComplete:
+      partial.onboardingComplete ??
+      (Boolean(partial.familySetupComplete) ? true : DEFAULT_CONFIG.onboardingComplete),
+    onboardingStep: normalizeOnboardingStep(partial.onboardingStep),
   }
+}
+
+function normalizeOnboardingStep(
+  value: unknown
+): OnboardingStep {
+  const n = typeof value === 'number' && Number.isInteger(value) ? value : 0
+  if (n >= 0 && n <= 4) return n as OnboardingStep
+  return 0
 }
 
 /** Load full config from localStorage. */
@@ -56,6 +70,8 @@ export async function setConfig(updates: Partial<ChronosConfig>): Promise<Chrono
     familyMembers: updates.familyMembers ?? current.familyMembers,
     familySetupComplete: updates.familySetupComplete ?? current.familySetupComplete,
     settings: updates.settings ? { ...current.settings, ...updates.settings } : current.settings,
+    onboardingComplete: updates.onboardingComplete ?? current.onboardingComplete,
+    onboardingStep: updates.onboardingStep !== undefined ? normalizeOnboardingStep(updates.onboardingStep) : current.onboardingStep,
   }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next))

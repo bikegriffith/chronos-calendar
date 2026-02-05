@@ -13,9 +13,13 @@ function generateId(): string {
 
 export interface FamilyMemberSetupProps {
   onComplete: () => void;
+  /** Optional label for the finish button (e.g. "Continue" during onboarding). */
+  finishButtonLabel?: string;
+  /** When true, hide the welcome title (e.g. when embedded in onboarding). */
+  hideTitle?: boolean;
 }
 
-export default function FamilyMemberSetup({ onComplete }: FamilyMemberSetupProps) {
+export default function FamilyMemberSetup({ onComplete, finishButtonLabel, hideTitle }: FamilyMemberSetupProps) {
   const [members, setMembers] = useState<FamilyMember[]>(() => [
     {
       id: generateId(),
@@ -114,19 +118,21 @@ export default function FamilyMemberSetup({ onComplete }: FamilyMemberSetupProps
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 dark:bg-neutral-dark-950">
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="flex-shrink-0 px-6 pt-12 pb-6 text-center"
-      >
-        <h1 className="font-display text-heading-xl font-semibold text-neutral-900 dark:text-neutral-dark-50 mb-2">
-          Welcome to your family calendar
-        </h1>
-        <p className="text-body text-neutral-600 dark:text-neutral-dark-400 max-w-md mx-auto">
-          Add everyone who shares a calendar. You’ll pick a color and emoji for each person and link their Google calendars.
-        </p>
-      </motion.div>
+      {!hideTitle && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="flex-shrink-0 px-6 pt-12 pb-6 text-center"
+        >
+          <h1 className="font-display text-heading-xl font-semibold text-neutral-900 dark:text-neutral-dark-50 mb-2">
+            Welcome to your family calendar
+          </h1>
+          <p className="text-body text-neutral-600 dark:text-neutral-dark-400 max-w-md mx-auto">
+            Add everyone who shares a calendar. You'll pick a color and emoji for each person and link their Google calendars.
+          </p>
+        </motion.div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         <div className="max-w-lg mx-auto space-y-4">
@@ -262,7 +268,7 @@ export default function FamilyMemberSetup({ onComplete }: FamilyMemberSetupProps
             whileHover={!saving ? { scale: 1.02 } : undefined}
             whileTap={!saving ? { scale: 0.98 } : undefined}
           >
-            {saving ? 'Saving…' : "We're all set — go to calendar"}
+            {saving ? 'Saving…' : (finishButtonLabel ?? "We're all set — go to calendar")}
           </motion.button>
         </div>
       </motion.footer>

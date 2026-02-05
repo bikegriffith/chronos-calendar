@@ -28,10 +28,17 @@ export interface AppSettings {
   voiceLanguage: string;
 }
 
+/** Onboarding step: 0=Welcome, 1=Connect Google, 2=Family, 3=Voice, 4=Finish */
+export type OnboardingStep = 0 | 1 | 2 | 3 | 4;
+
 export interface ChronosConfig {
   familyMembers: FamilyMember[];
   familySetupComplete: boolean;
   settings: AppSettings;
+  /** When true, first-run onboarding is done; user goes straight to app. */
+  onboardingComplete?: boolean;
+  /** Current step in first-run onboarding (0–4). Only relevant when !onboardingComplete. */
+  onboardingStep?: OnboardingStep;
 }
 
 export interface CalendarView {
