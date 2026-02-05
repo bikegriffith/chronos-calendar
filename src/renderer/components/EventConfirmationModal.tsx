@@ -57,9 +57,9 @@ export default function EventConfirmationModal({
   const [phase, setPhase] = useState<ModalPhase>('edit');
   const [error, setError] = useState<string | null>(null);
 
-  // When modal opens with a new parsed event, sync form state (useState only runs on first mount)
+  // When modal opens with a new initialEvent, sync form state (useState only runs on first mount)
   useEffect(() => {
-    if (open && initialEvent.title) {
+    if (open) {
       setTitle(initialEvent.title);
       setStartDate(initialEvent.startDate);
       setStartTime(initialEvent.startTime ?? '');
