@@ -5,7 +5,7 @@ import { familyColorList } from '@/styles/theme';
 import { CHRONOS_THEMES, getThemeOrDefault } from '@/styles/themes';
 import type { FamilyMember, ChronosConfig, AppSettings } from '@shared/types';
 import { AVATAR_EMOJIS } from '@shared/constants';
-import { getCalendarList } from '@/services/calendarService';
+import { getCalendarsWithCache } from '@/services/syncService';
 import type { CalendarAccount } from '@/services/calendarService';
 import { getConfig, setConfig, normalizeFamilyMember } from '@/services/configService';
 import { login, logout } from '@/services/googleAuth';
@@ -46,9 +46,12 @@ export default function SettingsScreen({ open, onClose, onDisconnect, onConfigCh
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [cfg, cals] = await Promise.all([getConfig(), getCalendarList().catch(() => [])]);
+      const [cfg, calendars] = await Promise.all([
+        getConfig(),
+        getCalendarsWithCache().then((r) => r.calendars).catch(() => []),
+      ]);
       setConfigState(cfg);
-      setCalendarList(cals);
+      setCalendarList(calendars);
     } finally {
       setLoading(false);
     }

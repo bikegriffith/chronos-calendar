@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import type { CalendarEvent as ServiceCalendarEvent } from '@/services/calendarService';
-import { updateEvent } from '@/services/calendarService';
+import { updateEventWithSync } from '@/services/syncService';
+import type { UpdateEventPatch } from '@/store/calendarStore';
 
 export interface EditEventModalProps {
   event: ServiceCalendarEvent | null;
@@ -59,7 +60,7 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
     setSaving(true);
     try {
       const allDay = !startTime && !endTime;
-      const patch: Parameters<typeof updateEvent>[2] = {
+      const patch: UpdateEventPatch = {
         summary: trimmed,
         ...(allDay
           ? {
@@ -71,7 +72,7 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
               end: { dateTime: `${startDate}T${endTime || startTime || '10:00'}:00` },
             }),
       };
-      await updateEvent(event.calendarId, event.id, patch);
+      await updateEventWithSync(event.calendarId, event.id, patch);
       onSaved();
       onClose();
     } catch (err) {

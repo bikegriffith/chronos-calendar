@@ -5,8 +5,14 @@ import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, e
 import type { FamilyMember } from '@shared/types';
 import { familyColorList } from '@/styles/theme';
 import { getThemeOrDefault } from '@/styles/themes';
-import { getCalendarList, getEvents, createEvent, deleteEvent } from '@/services/calendarService';
 import type { CalendarAccount } from '@/services/calendarService';
+import {
+  getCalendarsWithCache,
+  getEventsWithCache,
+  createEventWithSync,
+  deleteEventWithSync,
+  startSyncService,
+} from '@/services/syncService';
 import { getConfig } from '@/services/configService';
 import { parseTranscriptionToEvent, AIEventParserError } from '@/services/aiEventParser';
 import type { ParsedEvent } from '@/services/aiEventParser';
@@ -19,6 +25,7 @@ import EventDetailsPopover from '@/components/EventDetailsPopover'
 import EventQuickActionsSheet from '@/components/EventQuickActionsSheet'
 import EditEventModal from '@/components/EditEventModal'
 import SettingsScreen from '@/components/SettingsScreen'
+import { useSyncState } from '@/hooks/useSyncState'
 import type { ChronosConfig } from '@shared/types';
 
 const VIEW_MAP = {
@@ -74,7 +81,14 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   const [quickActionsEvent, setQuickActionsEvent] = useState<ServiceCalendarEvent | null>(null);
   const [eventToEdit, setEventToEdit] = useState<ServiceCalendarEvent | null>(null);
   const [navDirection, setNavDirection] = useState(0);
+  const [eventsFromCache, setEventsFromCache] = useState(false);
+  const [eventsCacheTimestamp, setEventsCacheTimestamp] = useState<Date | null>(null);
   const dragX = useMotionValue(0);
+  const syncState = useSyncState();
+
+  useEffect(() => {
+    return startSyncService();
+  }, []);
 
   const familyMembers = useMemo(
     () => (config?.familyMembers?.length ? config.familyMembers : []) as FamilyMember[],
@@ -103,12 +117,12 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   }, []);
 
   useEffect(() => {
-    getCalendarList()
-      .then((list) => {
-        setCalendarList(list);
+    getCalendarsWithCache()
+      .then(({ calendars }) => {
+        setCalendarList(calendars);
         const colors: Record<string, string> = {};
         const names: Record<string, string> = {};
-        list.forEach((cal, i) => {
+        calendars.forEach((cal, i) => {
           colors[cal.id] = cal.backgroundColor ?? familyColorList[i % familyColorList.length].DEFAULT;
           names[cal.id] = cal.summary || cal.id;
         });
@@ -137,9 +151,17 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
     const range = getDateRangeForView(currentDate, view);
     const colorsMap = new Map<string, string>(Object.entries(calendarColors));
     setEventsLoading(true);
-    getEvents(calendarIds, range, colorsMap, view === 'upcoming')
-      .then(setEvents)
-      .catch(() => setEvents([]))
+    getEventsWithCache(calendarIds, range, { calendarColors: colorsMap, omitOrderBy: view === 'upcoming' })
+      .then(({ events: evs, fromCache, cacheTimestamp }) => {
+        setEvents(evs);
+        setEventsFromCache(fromCache);
+        setEventsCacheTimestamp(cacheTimestamp);
+      })
+      .catch(() => {
+        setEvents([]);
+        setEventsFromCache(false);
+        setEventsCacheTimestamp(null);
+      })
       .finally(() => setEventsLoading(false));
   }, [currentDate, view, calendarIdsKey, calendarIds, calendarColors, refreshKey]);
 
@@ -289,12 +311,10 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
     });
   }, []);
   const handleDeleteEvent = useCallback(async (event: ServiceCalendarEvent) => {
-    try {
-      await deleteEvent(event.calendarId, event.id);
+    const ok = await deleteEventWithSync(event.calendarId, event.id);
+    if (ok) {
       setRefreshKey((k) => k + 1);
       setQuickActionsEvent(null);
-    } catch {
-      // Could show toast
     }
   }, []);
   const handleEditEvent = useCallback((event: ServiceCalendarEvent) => {
@@ -332,7 +352,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
 
   const handleConfirmEvent = useCallback(
     async (calendarId: string, event: import('../store/calendarStore').NewEventInput) => {
-      await createEvent(calendarId, event);
+      await createEventWithSync(calendarId, event);
       setRefreshKey((k) => k + 1);
     },
     []
@@ -403,8 +423,38 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
                 : format(currentDate, 'EEEE, MMM d, yyyy')}
         </time>
 
-        {/* Right: settings — same width as left for balance */}
-        <div className="flex items-center justify-end min-w-0">
+        {/* Right: offline/sync badge + settings */}
+        <div className="flex items-center justify-end gap-1.5 min-w-0">
+          {!syncState.isOnline && (
+            <span
+              className="shrink-0 rounded-full bg-amber-500/90 text-white text-body-xs font-medium px-2 py-1"
+              title="You are offline. Viewing cached data."
+            >
+              Offline
+            </span>
+          )}
+          {syncState.isOnline && syncState.status === 'syncing' && (
+            <span className="shrink-0 flex items-center gap-1 rounded-full bg-blue-500/90 text-white text-body-xs font-medium px-2 py-1">
+              <span className="w-2.5 h-2.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              Syncing
+            </span>
+          )}
+          {syncState.isOnline && syncState.status === 'error' && syncState.lastError && (
+            <span
+              className="shrink-0 rounded-full bg-red-500/90 text-white text-body-xs font-medium px-2 py-1"
+              title={syncState.lastError}
+            >
+              Sync error
+            </span>
+          )}
+          {syncState.pendingCount > 0 && (
+            <span
+              className="shrink-0 rounded-full bg-amber-600/90 text-white text-body-xs font-medium px-2 py-1"
+              title={`${syncState.pendingCount} change(s) will sync when online`}
+            >
+              {syncState.pendingCount} pending
+            </span>
+          )}
           <motion.button
             type="button"
             aria-label="Settings"
@@ -458,6 +508,13 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
               {eventsLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-neutral-dark-900/60 rounded-xl z-10">
                   <div className="text-body-sm text-neutral-600 dark:text-neutral-dark-400">Loading events…</div>
+                </div>
+              )}
+              {!eventsLoading && eventsFromCache && eventsCacheTimestamp && (
+                <div className="absolute top-2 left-2 right-2 z-10 flex justify-center">
+                  <span className="rounded-lg bg-black/40 dark:bg-white/20 text-white text-body-xs px-3 py-1.5">
+                    Cached {format(eventsCacheTimestamp, 'MMM d, h:mm a')}
+                  </span>
                 </div>
               )}
               <div className="h-full min-h-0 pointer-events-auto">
@@ -527,6 +584,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
           onResult={handleVoiceResult}
           language={config?.settings?.voiceLanguage}
           className="-mt-2"
+          disabled={!syncState.isOnline}
         />
 
         <div className="chronos-glass-pill flex items-center rounded-2xl p-1 min-h-[48px] gap-0.5">

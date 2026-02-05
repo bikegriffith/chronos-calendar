@@ -152,7 +152,7 @@ export const useCalendarStore = create<CalendarState & CalendarActions>((set, ge
     try {
       const colors = getCalendarColors(get());
       const colorsMap = new Map<string, string>(Object.entries(colors));
-      const events = await getEvents(calendarIds, dateRange, colorsMap);
+      const events = await getEvents(calendarIds, dateRange, { calendarColors: colorsMap });
       const eventsByCalendarId: Record<string, CalendarEvent[]> = {};
       for (const calId of calendarIds) {
         eventsByCalendarId[calId] = events.filter((e) => e.calendarId === calId);

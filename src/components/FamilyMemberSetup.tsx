@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { familyColorList } from '@/styles/theme';
 import type { FamilyMember } from '@shared/types';
 import { AVATAR_EMOJIS } from '@shared/constants';
-import { getCalendarList } from '@/services/calendarService';
+import { getCalendarsWithCache } from '@/services/syncService';
 import type { CalendarAccount } from '@/services/calendarService';
 import { setConfig, normalizeFamilyMember } from '@/services/configService';
 
@@ -31,8 +31,8 @@ export default function FamilyMemberSetup({ onComplete }: FamilyMemberSetupProps
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getCalendarList()
-      .then((list) => setCalendarList(list))
+    getCalendarsWithCache()
+      .then(({ calendars }) => setCalendarList(calendars))
       .catch(() => setCalendarList([]))
       .finally(() => setLoading(false));
   }, []);

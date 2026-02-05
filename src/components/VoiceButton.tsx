@@ -14,6 +14,8 @@ export interface VoiceButtonProps {
   /** BCP 47 language for speech recognition (e.g. from settings). */
   language?: string;
   className?: string;
+  /** When true, button is disabled (e.g. offline). */
+  disabled?: boolean;
 }
 
 const RIPPLE_COUNT = 3;
@@ -25,6 +27,7 @@ export default function VoiceButton({
   onResult,
   language,
   className = '',
+  disabled = false,
 }: VoiceButtonProps) {
   const [state, setState] = useState<ButtonState>('idle');
   const [liveTranscript, setLiveTranscript] = useState('');
@@ -113,17 +116,18 @@ export default function VoiceButton({
 
   const toggle = useCallback(() => {
     const r = recorderRef.current;
-    if (!r || state === 'unsupported') return;
+    if (!r || state === 'unsupported' || disabled) return;
     if (state === 'listening') {
       r.stop();
     } else {
       r.reset();
       r.start();
     }
-  }, [state]);
+  }, [state, disabled]);
 
   const isActive = state === 'listening' || state === 'processing';
   const showTranscript = liveTranscript.length > 0;
+  const isDisabled = disabled || state === 'unsupported';
 
   return (
     <div className={`flex flex-col items-center justify-center gap-3 ${className}`}>
@@ -179,19 +183,29 @@ export default function VoiceButton({
         {/* Main button */}
         <motion.button
           type="button"
-          aria-label={state === 'listening' ? 'Stop listening' : 'Start voice input'}
-          disabled={state === 'unsupported'}
+          aria-label={
+            disabled
+              ? 'Voice input unavailable offline'
+              : state === 'listening'
+                ? 'Stop listening'
+                : 'Start voice input'
+          }
+          disabled={isDisabled}
           onClick={toggle}
-          className="relative flex items-center justify-center w-[72px] h-[72px] rounded-full min-w-[72px] min-h-[72px] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-dark-900 overflow-hidden"
+          className="relative flex items-center justify-center w-[72px] h-[72px] rounded-full min-w-[72px] min-h-[72px] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-dark-900 overflow-hidden disabled:opacity-60 disabled:cursor-not-allowed"
           initial={false}
           animate={{
-            scale: state === 'idle' ? [1, 1.03, 1] : 1,
-            background: isActive
-              ? 'linear-gradient(135deg, #90CAF9 0%, #64B5F6 50%, #42A5F5 100%)'
-              : 'linear-gradient(145deg, #90CAF9 0%, #64B5F6 100%)',
-            boxShadow: isActive
-              ? '0 0 32px rgba(144, 202, 249, 0.45), 0 8px 24px rgba(0,0,0,0.12)'
-              : '0 8px 24px rgba(144, 202, 249, 0.3), 0 4px 12px rgba(0,0,0,0.08)',
+            scale: state === 'idle' && !disabled ? [1, 1.03, 1] : 1,
+            background: isDisabled
+              ? 'linear-gradient(145deg, #9E9E9E 0%, #757575 100%)'
+              : isActive
+                ? 'linear-gradient(135deg, #90CAF9 0%, #64B5F6 50%, #42A5F5 100%)'
+                : 'linear-gradient(145deg, #90CAF9 0%, #64B5F6 100%)',
+            boxShadow: isDisabled
+              ? '0 4px 12px rgba(0,0,0,0.1)'
+              : isActive
+                ? '0 0 32px rgba(144, 202, 249, 0.45), 0 8px 24px rgba(0,0,0,0.12)'
+                : '0 8px 24px rgba(144, 202, 249, 0.3), 0 4px 12px rgba(0,0,0,0.08)',
           }}
           transition={{
             scale: { duration: 2.5, repeat: state === 'idle' ? Infinity : 0, ease: 'easeInOut' },

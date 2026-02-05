@@ -139,12 +139,21 @@ export async function getCalendarList(): Promise<CalendarAccount[]> {
   }
 }
 
+export interface GetEventsOptions {
+  calendarColors?: Map<string, string>
+  omitOrderBy?: boolean
+  /** If set, only return events modified since this RFC3339 timestamp (for incremental sync). */
+  updatedMin?: string
+  /** When using updatedMin, set true to include deleted events so local cache can be updated. */
+  showDeleted?: boolean
+}
+
 export async function getEvents(
   calendarIds: string[],
   dateRange: DateRange,
-  calendarColors?: Map<string, string>,
-  omitOrderBy?: boolean
+  options: GetEventsOptions = {}
 ): Promise<CalendarEvent[]> {
+  const { calendarColors, omitOrderBy, updatedMin, showDeleted } = options
   try {
     const allEvents: CalendarEvent[] = []
     for (const calendarId of calendarIds) {
@@ -159,6 +168,8 @@ export async function getEvents(
           maxResults: '250',
         })
         if (!omitOrderBy) params.set('orderBy', 'startTime')
+        if (updatedMin) params.set('updatedMin', updatedMin)
+        if (showDeleted) params.set('showDeleted', 'true')
         if (pageToken) params.set('pageToken', pageToken)
         const url = `${CALENDAR_API_BASE}/calendars/${encodedId}/events?${params}`
         const data = await apiRequest<EventsListResponse>(url)
