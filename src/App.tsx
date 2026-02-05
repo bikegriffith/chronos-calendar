@@ -1,12 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { isAuthenticated } from '@/services/googleAuth'
 import { getConfig } from '@/services/configService'
 import type { ChronosConfig } from '@shared/types'
 import LoginScreen from '@/components/LoginScreen'
-import FamilyMemberSetup from '@/components/FamilyMemberSetup'
 import MainLayout from '@/components/MainLayout'
-import { OnboardingFlow } from '@/components/onboarding'
+
+const FamilyMemberSetup = lazy(() =>
+  import('@/components/FamilyMemberSetup').then((m) => ({ default: m.default }))
+)
+const OnboardingFlow = lazy(() =>
+  import('@/components/onboarding').then((m) => ({ default: m.OnboardingFlow }))
+)
 
 function App() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null)
@@ -43,12 +48,18 @@ function App() {
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           className="min-h-screen"
         >
+          <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-slate-900 dark:bg-slate-950">
+              <div className="w-10 h-10 rounded-full border-2 border-sky-500 border-t-transparent animate-spin" />
+            </div>
+          }>
           <OnboardingFlow
             config={config}
             authenticated={authenticated ?? false}
             onConfigUpdate={setConfig}
             onComplete={() => getConfig().then(setConfig)}
           />
+          </Suspense>
         </motion.div>
       ) : !authenticated ? (
         <LoginScreen key="login" onSuccess={() => setAuthenticated(true)} />
@@ -82,9 +93,15 @@ function AuthenticatedApp({
 }) {
   if (!config.familySetupComplete) {
     return (
-      <FamilyMemberSetup
-        onComplete={() => getConfig().then(onConfigUpdate)}
-      />
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-900 dark:bg-slate-950">
+          <div className="w-10 h-10 rounded-full border-2 border-sky-500 border-t-transparent animate-spin" />
+        </div>
+      }>
+        <FamilyMemberSetup
+          onComplete={() => getConfig().then(onConfigUpdate)}
+        />
+      </Suspense>
     )
   }
 

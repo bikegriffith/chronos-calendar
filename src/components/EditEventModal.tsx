@@ -1,9 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
+import { Check, Loader2 } from 'lucide-react';
 import type { CalendarEvent as ServiceCalendarEvent } from '@/services/calendarService';
 import { updateEventWithSync } from '@/services/syncService';
 import type { UpdateEventPatch } from '@/store/calendarStore';
+
+type EditModalPhase = 'edit' | 'saving' | 'success';
 
 export interface EditEventModalProps {
   event: ServiceCalendarEvent | null;
@@ -34,7 +37,7 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [phase, setPhase] = useState<EditModalPhase>('edit');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,6 +49,7 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
       setStartTime(event.start?.date ? '' : toTimeOnly(start));
       setEndTime(event.end?.date ? '' : toTimeOnly(end));
       setError(null);
+      setPhase('edit');
     }
   }, [event]);
 
@@ -57,7 +61,7 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
       return;
     }
     setError(null);
-    setSaving(true);
+    setPhase('saving');
     try {
       const allDay = !startTime && !endTime;
       const patch: UpdateEventPatch = {
@@ -74,17 +78,19 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
       };
       await updateEventWithSync(event.calendarId, event.id, patch);
       onSaved();
-      onClose();
+      setPhase('success');
+      setTimeout(() => onClose(), 1200);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update event');
-    } finally {
-      setSaving(false);
+      setPhase('edit');
     }
   }, [event, title, startDate, startTime, endTime, onSaved, onClose]);
 
   if (!event) return null;
 
   const allDay = !startTime && !endTime;
+  const saving = phase === 'saving';
+  const success = phase === 'success';
 
   return (
     <AnimatePresence>
@@ -97,7 +103,7 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
         <div
           className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
           aria-hidden
-          onClick={onClose}
+          onClick={phase === 'edit' ? onClose : undefined}
         />
         <motion.div
           role="dialog"
@@ -111,6 +117,24 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-5 pb-8">
+            {success ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center justify-center py-8 gap-4"
+              >
+                <div className="w-14 h-14 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                  <Check className="w-8 h-8 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} />
+                </div>
+                <p className="font-display text-heading-md font-semibold text-neutral-900 dark:text-neutral-dark-50">
+                  Saved!
+                </p>
+                <p className="text-body-sm text-neutral-600 dark:text-neutral-dark-400">
+                  Closing…
+                </p>
+              </motion.div>
+            ) : (
+              <>
             <h2 className="font-display text-heading-md font-semibold text-neutral-900 dark:text-neutral-dark-50 mb-4">
               Edit event
             </h2>
@@ -182,10 +206,17 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 min-h-[52px] rounded-xl font-semibold text-white bg-accent-primary hover:bg-accent-primary/90 disabled:opacity-60 transition-colors"
+                className="flex-1 min-h-[52px] rounded-xl font-semibold text-white bg-accent-primary hover:bg-accent-primary/90 disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
                 whileTap={{ scale: 0.98 }}
               >
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  'Save'
+                )}
               </motion.button>
               <motion.button
                 type="button"
@@ -197,6 +228,8 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
                 Cancel
               </motion.button>
             </div>
+              </>
+            )}
           </div>
         </motion.div>
       </motion.div>

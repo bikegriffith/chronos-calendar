@@ -372,10 +372,54 @@ body {
   transition: none;
 }
 
-/* Smooth 60fps-friendly transitions */
+/* Smooth 60fps-friendly transitions (GPU-accelerated) */
 @media (prefers-reduced-motion: no-preference) {
   .chronos-calendar-content .fc-event,
   .chronos-calendar-content .chronos-fc-event {
     will-change: transform;
+  }
+}
+
+/* Shimmer for loading skeletons — only background moves, elements stay fixed */
+@keyframes chronos-shimmer-keyframes {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.chronos-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.06) 0%,
+    rgba(0, 0, 0, 0.12) 25%,
+    rgba(0, 0, 0, 0.06) 50%,
+    rgba(0, 0, 0, 0.12) 75%,
+    rgba(0, 0, 0, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  background-position: 200% 0;
+  animation: chronos-shimmer-keyframes 2s ease-in-out infinite;
+  border-radius: 4px;
+}
+.dark .chronos-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.14) 25%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0.14) 75%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  background-position: 200% 0;
+}
+
+/* Respect reduced motion for animations */
+@media (prefers-reduced-motion: reduce) {
+  .chronos-shimmer,
+  .chronos-shimmer * {
+    animation: none !important;
+  }
+  .chronos-calendar-content .fc-event,
+  .chronos-calendar-content .chronos-fc-event {
+    animation: none;
   }
 }

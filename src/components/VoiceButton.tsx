@@ -260,6 +260,21 @@ export default function VoiceButton({
         </motion.button>
       </motion.div>
 
+      {/* Parsing… label when AI is processing */}
+      <AnimatePresence>
+        {state === 'processing' && (
+          <motion.p
+            key="parsing"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            className="text-caption font-medium text-accent-primary dark:text-accent-primary-light text-center"
+          >
+            Parsing…
+          </motion.p>
+        )}
+      </AnimatePresence>
+
       {/* Unavailable / error message */}
       <AnimatePresence>
         {(state === 'unsupported' || (state === 'error' && errorMessage)) && (

@@ -1,4 +1,5 @@
 import React, { useRef, useCallback, useMemo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { format, addDays, parseISO, startOfDay, endOfDay } from 'date-fns';
 import type { CalendarEvent as ServiceCalendarEvent } from '@/services/calendarService';
 
@@ -83,6 +84,75 @@ function sortEventsForDay(events: ServiceCalendarEvent[]): ServiceCalendarEvent[
   });
 }
 
+const DEFAULT_COLOR = '#94a3b8';
+const EVENT_CARD_HEIGHT = 76;
+
+interface UpcomingEventCardProps {
+  ev: ServiceCalendarEvent;
+  calendarColors: Record<string, string>;
+  calendarNames?: Record<string, string>;
+  calendarAvatars?: Record<string, string>;
+  onEventClick: (ev: ServiceCalendarEvent, e: React.MouseEvent | React.TouchEvent) => void;
+  onEventTouchStart: (ev: ServiceCalendarEvent) => void;
+  onEventTouchMove: () => void;
+  onEventTouchEnd: () => void;
+}
+
+const UpcomingEventCard = React.memo(function UpcomingEventCard({
+  ev,
+  calendarColors,
+  calendarNames,
+  calendarAvatars,
+  onEventClick,
+  onEventTouchStart,
+  onEventTouchMove,
+  onEventTouchEnd,
+}: UpcomingEventCardProps) {
+  const color = ev.color ?? calendarColors[ev.calendarId] ?? DEFAULT_COLOR;
+  const memberName = calendarNames?.[ev.calendarId] ?? ev.calendarId.slice(0, 8);
+  const avatarEmoji = calendarAvatars?.[ev.calendarId];
+  const initial = getInitial(memberName);
+  const title = (ev.summary || '(No title)').length > TITLE_MAX_CHARS
+    ? (ev.summary || '(No title)').slice(0, TITLE_MAX_CHARS - 1).trim() + '…'
+    : (ev.summary || '(No title)');
+  const timeStr = formatEventTime(ev);
+  const isAllDay = Boolean(ev.start?.date);
+
+  return (
+    <button
+      type="button"
+      className="chronos-upcoming-event text-left w-full rounded-xl min-h-[68px] py-4 px-4 border-none cursor-pointer transition-all duration-200 flex items-start gap-3 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--chronos-accent)]"
+      style={{
+        backgroundColor: `${color}22`,
+        borderLeft: `4px solid ${color}`,
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onEventClick(ev, e);
+      }}
+      onTouchStart={() => onEventTouchStart(ev)}
+      onTouchMove={onEventTouchMove}
+      onTouchEnd={onEventTouchEnd}
+      onTouchCancel={onEventTouchEnd}
+    >
+      <span
+        className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold leading-none ${avatarEmoji ? 'text-base' : 'text-xs'}`}
+        style={{ backgroundColor: color }}
+      >
+        {avatarEmoji ?? initial}
+      </span>
+      <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+        {!isAllDay && timeStr && (
+          <span className="text-xs font-medium text-[var(--chronos-text-muted)]">{timeStr}</span>
+        )}
+        <span className="text-sm font-medium text-[var(--chronos-text)] leading-snug break-words line-clamp-2">
+          {title}
+        </span>
+      </span>
+    </button>
+  );
+});
+
 export default function UpcomingView({
   events,
   calendarColors,
@@ -144,8 +214,6 @@ export default function UpcomingView({
     }
   }, []);
 
-  const defaultColor = '#94a3b8';
-
   return (
     <div className="chronos-upcoming-view chronos-glass-card h-full min-h-0 rounded-2xl overflow-hidden flex flex-col">
       {/* Header row: day of week + date for each of 4 days */}
@@ -162,71 +230,108 @@ export default function UpcomingView({
         ))}
       </div>
 
-      {/* 4 columns of stacked events */}
-      <div className="grid grid-cols-4 gap-3 flex-1 min-h-0 p-3 overflow-auto">
+      {/* 4 columns with virtualized event lists */}
+      <div className="grid grid-cols-4 gap-3 flex-1 min-h-0 p-3 overflow-hidden">
         {days.map((day, colIndex) => {
           const dayEvents = eventsByDay.get(colIndex) ?? [];
           return (
-            <div
+            <DayColumn
               key={day.toISOString()}
-              className="flex flex-col gap-3 min-h-0 overflow-auto rounded-xl bg-white/40 dark:bg-white/5 border border-white/20 dark:border-white/10"
-              role="button"
-              tabIndex={0}
-              onClick={() => onDateClick?.(day)}
-              onKeyDown={(e) => e.key === 'Enter' && onDateClick?.(day)}
-              aria-label={`Add event for ${format(day, 'EEEE, MMM d')}`}
-            >
-              <div className="p-3 flex flex-col gap-3 min-h-[120px]">
-                {dayEvents.map((ev) => {
-                  const color = ev.color ?? calendarColors[ev.calendarId] ?? defaultColor;
-                  const memberName = calendarNames?.[ev.calendarId] ?? ev.calendarId.slice(0, 8);
-                  const avatarEmoji = calendarAvatars?.[ev.calendarId];
-                  const initial = getInitial(memberName);
-                  const title = (ev.summary || '(No title)').length > TITLE_MAX_CHARS
-                    ? (ev.summary || '(No title)').slice(0, TITLE_MAX_CHARS - 1).trim() + '…'
-                    : (ev.summary || '(No title)');
-                  const timeStr = formatEventTime(ev);
-                  const isAllDay = Boolean(ev.start?.date);
-
-                  return (
-                    <button
-                      key={ev.id}
-                      type="button"
-                      className="chronos-upcoming-event text-left w-full rounded-xl min-h-[68px] py-4 px-4 border-none cursor-pointer transition-all duration-200 flex items-start gap-3 shadow-sm hover:shadow-md active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--chronos-accent)]"
-                      style={{
-                        backgroundColor: `${color}22`,
-                        borderLeft: `4px solid ${color}`,
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEventClick(ev, e);
-                      }}
-                      onTouchStart={() => handleEventTouchStart(ev)}
-                      onTouchMove={handleEventTouchMove}
-                      onTouchEnd={handleEventTouchEnd}
-                      onTouchCancel={handleEventTouchEnd}
-                    >
-                      <span
-                        className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold leading-none ${avatarEmoji ? 'text-base' : 'text-xs'}`}
-                        style={{ backgroundColor: color }}
-                      >
-                        {avatarEmoji ?? initial}
-                      </span>
-                      <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                        {!isAllDay && timeStr && (
-                          <span className="text-xs font-medium text-[var(--chronos-text-muted)]">{timeStr}</span>
-                        )}
-                        <span className="text-sm font-medium text-[var(--chronos-text)] leading-snug break-words line-clamp-2">
-                          {title}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+              day={day}
+              dayEvents={dayEvents}
+              calendarColors={calendarColors}
+              calendarNames={calendarNames}
+              calendarAvatars={calendarAvatars}
+              onDateClick={onDateClick}
+              onEventClick={handleEventClick}
+              onEventTouchStart={handleEventTouchStart}
+              onEventTouchMove={handleEventTouchMove}
+              onEventTouchEnd={handleEventTouchEnd}
+            />
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+interface DayColumnProps {
+  day: Date;
+  dayEvents: ServiceCalendarEvent[];
+  calendarColors: Record<string, string>;
+  calendarNames?: Record<string, string>;
+  calendarAvatars?: Record<string, string>;
+  onDateClick?: (date: Date) => void;
+  onEventClick: (ev: ServiceCalendarEvent, e: React.MouseEvent | React.TouchEvent) => void;
+  onEventTouchStart: (ev: ServiceCalendarEvent) => void;
+  onEventTouchMove: () => void;
+  onEventTouchEnd: () => void;
+}
+
+function DayColumn({
+  day,
+  dayEvents,
+  calendarColors,
+  calendarNames,
+  calendarAvatars,
+  onDateClick,
+  onEventClick,
+  onEventTouchStart,
+  onEventTouchMove,
+  onEventTouchEnd,
+}: DayColumnProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: dayEvents.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => EVENT_CARD_HEIGHT,
+    overscan: 2,
+  });
+
+  const virtualItems = virtualizer.getVirtualItems();
+  const totalHeight = virtualizer.getTotalSize();
+
+  return (
+    <div
+      ref={scrollRef}
+      className="flex flex-col min-h-0 overflow-auto rounded-xl bg-white/40 dark:bg-white/5 border border-white/20 dark:border-white/10"
+      role="button"
+      tabIndex={0}
+      onClick={() => onDateClick?.(day)}
+      onKeyDown={(e) => e.key === 'Enter' && onDateClick?.(day)}
+      aria-label={`Add event for ${format(day, 'EEEE, MMM d')}`}
+    >
+      <div className="p-3 relative min-h-[120px]" style={{ height: Math.max(totalHeight + 24, 120) }}>
+        {virtualItems.length === 0 ? (
+          <div className="absolute inset-0 flex items-center justify-center text-body-sm text-[var(--chronos-text-muted)]">
+            Tap to add
+          </div>
+        ) : (
+          virtualItems.map((virtualRow) => {
+            const ev = dayEvents[virtualRow.index]!;
+            return (
+              <div
+                key={ev.id}
+                className="absolute left-3 right-3"
+                style={{
+                  top: virtualRow.start + 12,
+                  height: virtualRow.size - 8,
+                }}
+              >
+                <UpcomingEventCard
+                  ev={ev}
+                  calendarColors={calendarColors}
+                  calendarNames={calendarNames}
+                  calendarAvatars={calendarAvatars}
+                  onEventClick={onEventClick}
+                  onEventTouchStart={onEventTouchStart}
+                  onEventTouchMove={onEventTouchMove}
+                  onEventTouchEnd={onEventTouchEnd}
+                />
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

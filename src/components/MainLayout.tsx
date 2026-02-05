@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence, useMotionValue, animate } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, animate, useReducedMotion } from 'framer-motion';
 import type { CalendarApi } from '@fullcalendar/core';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay, addDays } from 'date-fns';
 import type { FamilyMember } from '@shared/types';
@@ -17,15 +17,20 @@ import { getConfig } from '@/services/configService';
 import { parseTranscriptionToEvent, AIEventParserError } from '@/services/aiEventParser';
 import type { ParsedEvent } from '@/services/aiEventParser';
 import type { CalendarEvent as ServiceCalendarEvent } from '@/services/calendarService';
+import { lazy, Suspense } from 'react'
 import CalendarView from '@/components/CalendarView'
 import UpcomingView from '@/components/UpcomingView'
 import VoiceButton from '@/components/VoiceButton'
-import EventConfirmationModal from '@/components/EventConfirmationModal'
 import EventDetailsPopover from '@/components/EventDetailsPopover'
 import EventQuickActionsSheet from '@/components/EventQuickActionsSheet'
-import EditEventModal from '@/components/EditEventModal'
-import SettingsScreen from '@/components/SettingsScreen'
+import { CalendarSkeleton } from '@/components/ui/CalendarSkeleton'
+import { ErrorState } from '@/components/ui/ErrorState'
+import { SyncProgressBar } from '@/components/ui/SyncProgressBar'
 import { useSyncState } from '@/hooks/useSyncState'
+
+const EventConfirmationModal = lazy(() => import('@/components/EventConfirmationModal').then((m) => ({ default: m.default })))
+const EditEventModal = lazy(() => import('@/components/EditEventModal').then((m) => ({ default: m.default })))
+const SettingsScreen = lazy(() => import('@/components/SettingsScreen').then((m) => ({ default: m.default })))
 import type { ChronosConfig } from '@shared/types';
 
 const VIEW_MAP = {
@@ -83,8 +88,13 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   const [navDirection, setNavDirection] = useState(0);
   const [eventsFromCache, setEventsFromCache] = useState(false);
   const [eventsCacheTimestamp, setEventsCacheTimestamp] = useState<Date | null>(null);
+  const [eventsError, setEventsError] = useState<string | null>(null);
   const dragX = useMotionValue(0);
   const syncState = useSyncState();
+  const shouldReduceMotion = useReducedMotion();
+  const reducedTransition = useMemo(() => (shouldReduceMotion ? { duration: 0 } : { type: 'spring' as const, damping: 26, stiffness: 320 }), [shouldReduceMotion]);
+  const reducedTransitionFast = useMemo(() => (shouldReduceMotion ? { duration: 0 } : { type: 'spring' as const, stiffness: 400, damping: 25 }), [shouldReduceMotion]);
+  const reducedDuration = (d: number) => (shouldReduceMotion ? 0 : d);
 
   useEffect(() => {
     return startSyncService();
@@ -151,16 +161,19 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
     const range = getDateRangeForView(currentDate, view);
     const colorsMap = new Map<string, string>(Object.entries(calendarColors));
     setEventsLoading(true);
+    setEventsError(null);
     getEventsWithCache(calendarIds, range, { calendarColors: colorsMap, omitOrderBy: view === 'upcoming' })
       .then(({ events: evs, fromCache, cacheTimestamp }) => {
         setEvents(evs);
         setEventsFromCache(fromCache);
         setEventsCacheTimestamp(cacheTimestamp);
+        setEventsError(null);
       })
-      .catch(() => {
+      .catch((err) => {
         setEvents([]);
         setEventsFromCache(false);
         setEventsCacheTimestamp(null);
+        setEventsError(err instanceof Error ? err.message : 'Couldn’t load events. Check your connection and try again.');
       })
       .finally(() => setEventsLoading(false));
   }, [currentDate, view, calendarIdsKey, calendarIds, calendarColors, refreshKey]);
@@ -374,11 +387,12 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
     <div className="flex flex-col h-screen overflow-hidden bg-transparent">
       {/* Single compact bar: filters (left) | date (center) | settings (right) — liquid glass */}
       <motion.header
-        initial={{ y: -12, opacity: 0 }}
+        initial={shouldReduceMotion ? false : { y: -12, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+        transition={{ duration: reducedDuration(0.35), ease: [0.25, 0.46, 0.45, 0.94] }}
         className="chronos-glass-bar fixed top-0 left-0 right-0 z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 py-2 min-h-[52px]"
       >
+        <SyncProgressBar visible={syncState.isOnline && syncState.status === 'syncing'} />
         {/* Left: filter chips (scrollable) — same width as right for balance */}
         <div className="flex items-center justify-start min-w-0 overflow-hidden">
           {familyMembers.length > 0 ? (
@@ -480,12 +494,14 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         </div>
       </motion.header>
 
-      <SettingsScreen
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        onDisconnect={onLogout}
-        onConfigChange={config ? () => getConfig().then(setConfig) : undefined}
-      />
+      <Suspense fallback={null}>
+        <SettingsScreen
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          onDisconnect={onLogout}
+          onConfigChange={config ? () => getConfig().then(setConfig) : undefined}
+        />
+      </Suspense>
 
       {/* Calendar — main area with swipe-to-navigate and padding for single compact bar */}
       <main
@@ -511,54 +527,77 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={view === 'upcoming' ? `${view}-${currentDate.getTime()}` : `${view}-${currentDate.getFullYear()}-${currentDate.getMonth()}`}
-              initial={{ opacity: 0, x: navDirection * 60 }}
+              initial={
+                shouldReduceMotion || eventsLoading
+                  ? false
+                  : { opacity: 0, x: navDirection * 60 }
+              }
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -navDirection * 40 }}
-              transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+              exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, x: -navDirection * 40 }}
+              transition={reducedTransition}
               className="h-full min-h-[320px] relative"
             >
               {eventsLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-neutral-dark-900/60 rounded-xl z-10">
-                  <div className="text-body-sm text-neutral-600 dark:text-neutral-dark-400">Loading events…</div>
+                <div className="absolute inset-0 z-10 rounded-xl overflow-hidden flex flex-col" aria-hidden>
+                  <CalendarSkeleton variant={view === 'upcoming' ? 'upcoming' : 'month'} currentDate={currentDate} className="flex-1 min-h-0 w-full" />
                 </div>
               )}
-              {!eventsLoading && eventsFromCache && eventsCacheTimestamp && (
-                <div className="absolute top-2 left-2 right-2 z-10 flex justify-center">
+              {!eventsLoading && eventsError && (
+                <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/80 dark:bg-neutral-dark-900/80 rounded-xl p-4">
+                  <ErrorState
+                    variant="api"
+                    message={eventsError}
+                    onRetry={() => {
+                      setEventsError(null);
+                      setRefreshKey((k) => k + 1);
+                    }}
+                  />
+                </div>
+              )}
+              {!eventsLoading && eventsFromCache && eventsCacheTimestamp && !eventsError && (
+                <div className="absolute top-2 left-2 right-2 z-10 flex justify-center pointer-events-none">
                   <span className="rounded-lg bg-black/40 dark:bg-white/20 text-white text-body-xs px-3 py-1.5">
                     Cached {format(eventsCacheTimestamp, 'MMM d, h:mm a')}
                   </span>
                 </div>
               )}
-              <div className="h-full min-h-0 pointer-events-auto">
-                {view === 'upcoming' ? (
-                  <UpcomingView
-                    events={filteredEvents}
-                    calendarColors={colorsNamesAndAvatars.colors}
-                    calendarNames={colorsNamesAndAvatars.names}
-                    calendarAvatars={colorsNamesAndAvatars.avatars}
-                    currentDate={currentDate}
-                    onEventClick={handleEventClick}
-                    onEventLongPress={handleEventLongPress}
-                  />
-                ) : (
-                  <CalendarView
-                    calendarRef={calendarRef}
-                    events={filteredEvents}
-                    calendarColors={colorsNamesAndAvatars.colors}
-                    calendarNames={colorsNamesAndAvatars.names}
-                    viewType={view as 'month' | 'week' | 'day'}
-                    currentDate={currentDate}
-                    onDatesSet={(start) => {
-                      const api = calendarRef.current?.getApi();
-                      if (api) calendarApi.current = api;
-                      setCurrentDate(start);
-                    }}
-                    onEventClick={handleEventClick}
-                    onEventLongPress={handleEventLongPress}
-                    onDateDoubleClick={handleDateDoubleClick}
-                  />
-                )}
-              </div>
+              {!eventsLoading && !eventsError && (
+                <motion.div
+                  className="h-full min-h-0 pointer-events-auto"
+                  initial={shouldReduceMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: reducedDuration(0.25), ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {view === 'upcoming' ? (
+                    <UpcomingView
+                      events={filteredEvents}
+                      calendarColors={colorsNamesAndAvatars.colors}
+                      calendarNames={colorsNamesAndAvatars.names}
+                      calendarAvatars={colorsNamesAndAvatars.avatars}
+                      currentDate={currentDate}
+                      onEventClick={handleEventClick}
+                      onEventLongPress={handleEventLongPress}
+                    />
+                  ) : (
+                    <CalendarView
+                      calendarRef={calendarRef}
+                      events={filteredEvents}
+                      calendarColors={colorsNamesAndAvatars.colors}
+                      calendarNames={colorsNamesAndAvatars.names}
+                      viewType={view as 'month' | 'week' | 'day'}
+                      currentDate={currentDate}
+                      onDatesSet={(start) => {
+                        const api = calendarRef.current?.getApi();
+                        if (api) calendarApi.current = api;
+                        setCurrentDate(start);
+                      }}
+                      onEventClick={handleEventClick}
+                      onEventLongPress={handleEventLongPress}
+                      onDateDoubleClick={handleDateDoubleClick}
+                    />
+                  )}
+                </motion.div>
+              )}
             </motion.div>
           </AnimatePresence>
         </motion.div>
@@ -566,9 +605,9 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
 
       {/* Bottom Bar — liquid glass */}
       <motion.footer
-        initial={{ y: 16, opacity: 0 }}
+        initial={shouldReduceMotion ? false : { y: 16, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.04 }}
+        transition={{ duration: reducedDuration(0.35), ease: [0.25, 0.46, 0.45, 0.94], delay: reducedDuration(0.04) }}
         className="chronos-glass-bar fixed bottom-0 left-0 right-0 z-30 flex items-center justify-between gap-3 px-4 py-3 min-h-[76px] border-t border-[var(--chronos-border)]"
       >
         <motion.button
@@ -611,7 +650,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
                   : 'text-neutral-600 dark:text-neutral-dark-400 hover:text-neutral-900 dark:hover:text-neutral-dark-200'
               }`}
               whileTap={{ scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              transition={reducedTransitionFast}
             >
               {v}
             </motion.button>
@@ -619,19 +658,21 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         </div>
       </motion.footer>
 
-      <EventConfirmationModal
-        open={eventToConfirm !== null}
-        initialEvent={eventToConfirm ?? ({ title: '', startDate: format(new Date(), 'yyyy-MM-dd'), startTime: null, endTime: null, durationMinutes: null, attendee: null, notes: null } as ParsedEvent)}
-        familyMembers={familyMembers}
-        getCalendarIdForMember={getCalendarIdForMember}
-        defaultCalendarId={writableCalendars[0]?.id}
-        onConfirm={handleConfirmEvent}
-        onCancel={() => {
-          setEventToConfirm(null);
-          setVoiceError(null);
-        }}
-        onSuccess={() => setVoiceError(null)}
-      />
+      <Suspense fallback={null}>
+        <EventConfirmationModal
+          open={eventToConfirm !== null}
+          initialEvent={eventToConfirm ?? ({ title: '', startDate: format(new Date(), 'yyyy-MM-dd'), startTime: null, endTime: null, durationMinutes: null, attendee: null, notes: null } as ParsedEvent)}
+          familyMembers={familyMembers}
+          getCalendarIdForMember={getCalendarIdForMember}
+          defaultCalendarId={writableCalendars[0]?.id}
+          onConfirm={handleConfirmEvent}
+          onCancel={() => {
+            setEventToConfirm(null);
+            setVoiceError(null);
+          }}
+          onSuccess={() => setVoiceError(null)}
+        />
+      </Suspense>
 
       <EventDetailsPopover
         event={eventDetails?.event ?? null}
@@ -651,11 +692,13 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
       />
 
       {eventToEdit && (
-        <EditEventModal
-          event={eventToEdit}
-          onClose={() => setEventToEdit(null)}
-          onSaved={handleEditSaved}
-        />
+        <Suspense fallback={null}>
+          <EditEventModal
+            event={eventToEdit}
+            onClose={() => setEventToEdit(null)}
+            onSaved={handleEditSaved}
+          />
+        </Suspense>
       )}
 
       {voiceError && (
