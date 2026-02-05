@@ -30,6 +30,8 @@ export interface CalendarEvent {
   summary: string
   start: { dateTime?: string; date?: string }
   end: { dateTime?: string; date?: string }
+  description?: string
+  location?: string
   attendees?: CalendarEventAttendee[]
   calendarId: string
   color?: string
@@ -49,6 +51,8 @@ interface EventsListResponse {
   items?: Array<{
     id: string
     summary?: string
+    description?: string
+    location?: string
     start?: { dateTime?: string; date?: string }
     end?: { dateTime?: string; date?: string }
     attendees?: Array<{ email?: string; displayName?: string; responseStatus?: string }>
@@ -112,6 +116,8 @@ function mapEventItem(
     summary: raw.summary ?? '',
     start: raw.start ?? { date: '' },
     end: raw.end ?? { date: '' },
+    description: raw.description,
+    location: raw.location,
     attendees,
     calendarId,
     color,
@@ -245,6 +251,7 @@ export async function updateEvent(
     start?: { dateTime?: string; date?: string }
     end?: { dateTime?: string; date?: string }
     description?: string
+    location?: string
     attendees?: Array<{ email: string }>
   }
 ): Promise<CalendarEvent> {

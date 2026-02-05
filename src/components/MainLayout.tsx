@@ -310,17 +310,29 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
       notes: null,
     });
   }, []);
-  const handleDeleteEvent = useCallback(async (event: ServiceCalendarEvent) => {
+  const handleDeleteEvent = useCallback(async (event: ServiceCalendarEvent): Promise<boolean> => {
     const ok = await deleteEventWithSync(event.calendarId, event.id);
     if (ok) {
       setRefreshKey((k) => k + 1);
       setQuickActionsEvent(null);
     }
+    return ok;
   }, []);
   const handleEditEvent = useCallback((event: ServiceCalendarEvent) => {
     setQuickActionsEvent(null);
     setEventToEdit(event);
   }, []);
+  const handleEditFromPopover = useCallback((event: ServiceCalendarEvent) => {
+    setEventDetails(null);
+    setEventToEdit(event);
+  }, []);
+  const handleDeleteFromPopover = useCallback(
+    async (event: ServiceCalendarEvent) => {
+      const ok = await handleDeleteEvent(event);
+      if (ok) setEventDetails(null);
+    },
+    [handleDeleteEvent]
+  );
   const handleEditSaved = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const handleVoiceResult = useCallback(async (text: string) => {
@@ -626,6 +638,9 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         anchorRect={eventDetails?.anchorRect ? { top: eventDetails.anchorRect.top, left: eventDetails.anchorRect.left, width: eventDetails.anchorRect.width, height: eventDetails.anchorRect.height } : null}
         onClose={() => setEventDetails(null)}
         calendarName={eventDetails?.event ? colorsNamesAndAvatars.names[eventDetails.event.calendarId] : undefined}
+        onEdit={handleEditFromPopover}
+        onDelete={handleDeleteFromPopover}
+        onSaved={handleEditSaved}
       />
 
       <EventQuickActionsSheet
