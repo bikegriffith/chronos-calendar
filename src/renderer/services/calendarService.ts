@@ -178,8 +178,6 @@ export async function getEvents(
   calendarColors?: Map<string, string>
 ): Promise<CalendarEvent[]> {
   try {
-    const timeMin = encodeURIComponent(dateRange.start);
-    const timeMax = encodeURIComponent(dateRange.end);
     const allEvents: CalendarEvent[] = [];
 
     for (const calendarId of calendarIds) {
@@ -189,8 +187,8 @@ export async function getEvents(
 
       do {
         const params = new URLSearchParams({
-          timeMin,
-          timeMax,
+          timeMin: dateRange.start,
+          timeMax: dateRange.end,
           singleEvents: 'true',
           orderBy: 'startTime',
           maxResults: '250',
