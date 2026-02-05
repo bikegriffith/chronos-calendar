@@ -1,4 +1,4 @@
-import { Outlet, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import appCss from '@/index.css?url'
 
 export const Route = createRootRoute({
@@ -18,9 +18,28 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  component: RootLayout,
+  shellComponent: RootDocument,
+  notFoundComponent: NotFound,
 })
 
-function RootLayout() {
-  return <Outlet />
+function RootDocument({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+
+function NotFound() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-900">
+      <p className="text-slate-300">Page not found.</p>
+    </div>
+  )
 }
