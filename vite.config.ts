@@ -3,6 +3,8 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 import path from 'path'
+import { nitro } from 'nitro/vite'
+
 
 export default defineConfig({
   resolve: {
@@ -14,6 +16,7 @@ export default defineConfig({
   plugins: [
     viteTsConfigPaths({ projects: ['./tsconfig.json'] }),
     tanstackStart(),
+    nitro(),
     viteReact(),
   ],
   server: {

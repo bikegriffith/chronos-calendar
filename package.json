@@ -12,7 +12,12 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["react", "typescript", "calendar", "tanstack-start"],
+  "keywords": [
+    "react",
+    "typescript",
+    "calendar",
+    "tanstack-start"
+  ],
   "license": "MIT",
   "dependencies": {
     "@fullcalendar/core": "^6.1.10",
@@ -26,6 +31,7 @@
     "date-fns": "^3.6.0",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.400.0",
+    "nitro": "^3.0.1-alpha.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "zustand": "^4.5.0"
