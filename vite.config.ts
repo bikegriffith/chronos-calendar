@@ -6,6 +6,8 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   root: 'src/renderer',
+  // Load .env.local from repo root (same folder as package.json), not from root: 'src/renderer'
+  envDir: path.resolve(__dirname),
   base: './',
   build: {
     outDir: '../../dist/renderer',

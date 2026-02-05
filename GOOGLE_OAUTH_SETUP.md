@@ -46,6 +46,23 @@ For **Desktop app** credentials, Google allows the redirect URI **`http://localh
 
 If you use **Web application** credentials instead, add the exact callback URL (e.g. `http://localhost:3456/callback`) to **Authorized redirect URIs** in the OAuth client.
 
+## 5b. Optional: Sign in from Chrome (for voice input testing)
+
+The Web Speech API does not work inside Electron, but it works in Chrome. To sign in when running the app in Chrome at `http://localhost:5173` (e.g. to test voice input):
+
+1. In **APIs & Services** → **Credentials**, click **Create Credentials** → **OAuth client ID**.
+2. Set **Application type** to **Web application**.
+3. Name it (e.g. "Chronos Web (localhost)").
+4. Under **Authorized JavaScript origins** add: `http://localhost:5173`
+5. Under **Authorized redirect URIs** add: `http://localhost:5173/callback`
+6. Click **Create** and copy the **Client ID** and **Client secret**.
+7. In the **project root** (the folder that contains `package.json`), create a file **`.env.local`** (it is gitignored). Put exactly these two lines (no quotes around the values):
+   ```
+   VITE_GOOGLE_WEB_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
+   VITE_GOOGLE_WEB_CLIENT_SECRET=your-web-client-secret
+   ```
+8. **Restart the dev server** (stop it and run `npm run dev` again). Then open **Chrome** and go to **http://localhost:5173**. Click **Connect Google Calendar**; you’ll be redirected to Google and back to the app after signing in. Voice input will work there.
+
 ## 6. Run Chronos and Connect
 
 1. Start the app (`npm run dev`).
@@ -67,3 +84,6 @@ If you use **Web application** credentials instead, add the exact callback URL (
 - **Scopes**  
   For full calendar access, ensure the consent screen includes the scope:  
   `https://www.googleapis.com/auth/calendar`
+
+- **"Google Auth is not available" in Chrome**  
+  Ensure `.env.local` is in the **project root** (same folder as `package.json`). Variable names must be exactly `VITE_GOOGLE_WEB_CLIENT_ID` and `VITE_GOOGLE_WEB_CLIENT_SECRET`. Use no quotes; restart the dev server after creating or editing `.env.local`.

@@ -32,3 +32,4 @@ release
 
 # Google OAuth credentials (never commit)
 credentials.json
+credentials*.json

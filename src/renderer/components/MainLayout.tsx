@@ -8,14 +8,15 @@ import { familyColorList } from '../styles/theme';
 import { getCalendarList, getEvents } from '../services/calendarService';
 import type { CalendarAccount } from '../services/calendarService';
 import CalendarView from './CalendarView';
+import VoiceButton from './VoiceButton';
 
 // Default family members (can later come from store/API)
 const DEFAULT_FAMILY_MEMBERS: FamilyMember[] = [
   { id: '1', name: 'Mom', color: familyColorList[0].DEFAULT },
   { id: '2', name: 'Dad', color: familyColorList[1].DEFAULT },
-  { id: '3', name: 'Alex', color: familyColorList[2].DEFAULT },
-  { id: '4', name: 'Sam', color: familyColorList[3].DEFAULT },
-  { id: '5', name: 'Jesse', color: familyColorList[4].DEFAULT },
+  { id: '3', name: 'Joey', color: familyColorList[2].DEFAULT },
+  { id: '4', name: 'Bryce', color: familyColorList[3].DEFAULT },
+  { id: '5', name: 'Julia', color: familyColorList[4].DEFAULT },
 ];
 
 const VIEW_MAP = {
@@ -271,16 +272,15 @@ export default function MainLayout() {
           Add Event
         </button>
 
-        <motion.button
-          type="button"
-          aria-label="Voice input"
-          className="flex items-center justify-center w-16 h-16 rounded-full bg-accent-primary text-white shadow-lg hover:bg-accent-primary-dark focus:outline-none focus-ring-2 focus:ring-accent-primary focus:ring-offset-2 dark:focus:ring-offset-neutral-dark-900 min-w-[48px] min-h-[48px]"
-          animate={{ scale: [1, 1.05, 1] }}
-          transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <VoiceIcon className="w-8 h-8" />
-        </motion.button>
+        <VoiceButton
+          onResult={(text) => {
+            if (text.trim()) {
+              // TODO: use transcribed text (e.g. create event, search)
+              console.log('Voice result:', text);
+            }
+          }}
+          className="-mt-2"
+        />
 
         <div className="flex items-center rounded-xl bg-neutral-100 dark:bg-neutral-dark-700 p-1 min-h-[48px]">
           {(['month', 'week', 'day'] as const).map((v) => (
@@ -320,10 +320,3 @@ function PlusIcon({ className }: { className?: string }) {
   );
 }
 
-function VoiceIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-    </svg>
-  );
-}
