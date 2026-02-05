@@ -171,11 +171,13 @@ export async function getCalendarList(): Promise<CalendarAccount[]> {
 /**
  * Fetches events from multiple calendars for a date range.
  * Handles pagination for large event lists per calendar.
+ * @param omitOrderBy - when true, orderBy=startTime is omitted so all-day events are included reliably (e.g. for upcoming view)
  */
 export async function getEvents(
   calendarIds: string[],
   dateRange: DateRange,
-  calendarColors?: Map<string, string>
+  calendarColors?: Map<string, string>,
+  omitOrderBy?: boolean
 ): Promise<CalendarEvent[]> {
   try {
     const allEvents: CalendarEvent[] = [];
@@ -190,9 +192,9 @@ export async function getEvents(
           timeMin: dateRange.start,
           timeMax: dateRange.end,
           singleEvents: 'true',
-          orderBy: 'startTime',
           maxResults: '250',
         });
+        if (!omitOrderBy) params.set('orderBy', 'startTime');
         if (pageToken) params.set('pageToken', pageToken);
         const url = `${CALENDAR_API_BASE}/calendars/${encodedId}/events?${params}`;
         const data = await apiRequest<EventsListResponse>(url);

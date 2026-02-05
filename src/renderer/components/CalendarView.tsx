@@ -3,7 +3,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import type { EventContentArg, EventClickArg, EventApi, DateClickArg } from '@fullcalendar/core';
+import type { EventContentArg, EventClickArg, EventApi, DateClickArg, DayCellMountArg } from '@fullcalendar/core';
 import type { CalendarEvent as ServiceCalendarEvent } from '../services/calendarService';
 
 const LONG_PRESS_MS = 500;
@@ -30,6 +30,8 @@ export interface CalendarViewProps {
   onEventLongPress?: (event: ServiceCalendarEvent) => void;
   /** Tap on empty date cell: quick add event for that day */
   onDateClick?: (date: Date) => void;
+  /** Double-click on date cell: open add event for that day */
+  onDateDoubleClick?: (date: Date) => void;
 }
 
 const VIEW_MAP = {
@@ -110,6 +112,7 @@ function CalendarViewInner({
   onEventClick,
   onEventLongPress,
   onDateClick,
+  onDateDoubleClick,
 }: CalendarViewProps) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
@@ -199,6 +202,25 @@ function CalendarViewInner({
     if (cleanup) cleanup();
   }, []);
 
+  const handleDayCellDidMount = useCallback(
+    (arg: DayCellMountArg) => {
+      if (!onDateDoubleClick) return;
+      const date = arg.date instanceof Date ? arg.date : new Date(arg.date as string | number);
+      const handler = () => onDateDoubleClick(date);
+      arg.el.addEventListener('dblclick', handler);
+      (arg.el as HTMLElement & { __chronosDayDblclick?: () => void }).__chronosDayDblclick = handler;
+    },
+    [onDateDoubleClick]
+  );
+
+  const handleDayCellWillUnmount = useCallback((arg: DayCellMountArg) => {
+    const handler = (arg.el as HTMLElement & { __chronosDayDblclick?: () => void }).__chronosDayDblclick;
+    if (handler) {
+      arg.el.removeEventListener('dblclick', handler);
+      delete (arg.el as HTMLElement & { __chronosDayDblclick?: () => void }).__chronosDayDblclick;
+    }
+  }, []);
+
   const renderEventContent = useCallback((arg: EventContentArg) => {
     const ext = arg.event.extendedProps as {
       memberName?: string;
@@ -246,6 +268,8 @@ function CalendarViewInner({
         dateClick={onDateClick ? handleDateClick : undefined}
         eventDidMount={handleEventDidMount}
         eventWillUnmount={handleEventWillUnmount}
+        dayCellDidMount={handleDayCellDidMount}
+        dayCellWillUnmount={handleDayCellWillUnmount}
         eventContent={renderEventContent}
         events={fcEvents}
         fixedWeekCount={false}

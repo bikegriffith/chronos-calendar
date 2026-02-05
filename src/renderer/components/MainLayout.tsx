@@ -38,7 +38,7 @@ function getDateRangeForView(date: Date, viewType: ViewType): { start: string; e
   let end: Date;
   if (viewType === 'upcoming') {
     start = startOfDay(date);
-    end = endOfDay(addDays(date, 3));
+    end = startOfDay(addDays(date, 4));
   } else if (viewType === 'month') {
     start = startOfMonth(date);
     end = endOfMonth(date);
@@ -120,12 +120,18 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
 
   const calendarIds = useMemo(() => calendarList.map((c) => c.id), [calendarList]);
   const calendarIdsKey = calendarIds.join(',');
+  const prevViewRef = useRef<ViewType>(view);
   useEffect(() => {
     if (calendarIds.length === 0) return;
+    if (view === 'upcoming' && prevViewRef.current !== 'upcoming') {
+      prevViewRef.current = view;
+      return;
+    }
+    prevViewRef.current = view;
     const range = getDateRangeForView(currentDate, view);
     const colorsMap = new Map<string, string>(Object.entries(calendarColors));
     setEventsLoading(true);
-    getEvents(calendarIds, range, colorsMap)
+    getEvents(calendarIds, range, colorsMap, view === 'upcoming')
       .then(setEvents)
       .catch(() => setEvents([]))
       .finally(() => setEventsLoading(false));
@@ -211,6 +217,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   }, [navDirection, currentDate]);
 
   const changeView = useCallback((v: ViewType) => {
+    if (v === 'upcoming') setCurrentDate(new Date());
     setView(v);
     if (v !== 'upcoming') calendarApi.current?.changeView(VIEW_MAP[v]);
   }, []);
@@ -261,11 +268,10 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
     setEventDetails(null);
     setQuickActionsEvent(event);
   }, []);
-  const handleDateClick = useCallback((date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
+  const handleDateDoubleClick = useCallback((date: Date) => {
     setEventToConfirm({
       title: '',
-      startDate: dateStr,
+      startDate: format(date, 'yyyy-MM-dd'),
       startTime: null,
       endTime: null,
       durationMinutes: null,
@@ -452,7 +458,6 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
                     currentDate={currentDate}
                     onEventClick={handleEventClick}
                     onEventLongPress={handleEventLongPress}
-                    onDateClick={handleDateClick}
                   />
                 ) : (
                   <CalendarView
@@ -469,7 +474,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
                     }}
                     onEventClick={handleEventClick}
                     onEventLongPress={handleEventLongPress}
-                    onDateClick={handleDateClick}
+                    onDateDoubleClick={handleDateDoubleClick}
                   />
                 )}
               </div>
