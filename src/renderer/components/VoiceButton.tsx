@@ -8,6 +8,13 @@ import {
 } from '../services/voiceRecorder';
 
 type ButtonState = 'idle' | 'listening' | 'processing' | 'error' | 'unsupported';
+export interface VoiceButtonProps {
+  onTranscript?: (text: string, isFinal: boolean) => void;
+  onResult?: (text: string) => void;
+  /** BCP 47 language for speech recognition (e.g. from settings). */
+  language?: string;
+  className?: string;
+}
 
 const RIPPLE_COUNT = 3;
 const RIPPLE_DURATION = 2;
@@ -15,12 +22,9 @@ const RIPPLE_DURATION = 2;
 export default function VoiceButton({
   onTranscript,
   onResult,
+  language,
   className = '',
-}: {
-  onTranscript?: (text: string, isFinal: boolean) => void;
-  onResult?: (text: string) => void;
-  className?: string;
-}) {
+}: VoiceButtonProps) {
   const [state, setState] = useState<ButtonState>('idle');
   const [liveTranscript, setLiveTranscript] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -63,18 +67,21 @@ export default function VoiceButton({
       );
       return;
     }
-    const recorder = new VoiceRecorder({
-      onStateChange: handleStateChange,
-      onTranscript: handleTranscript,
-      onResult: handleResult,
-      onError: handleError,
-    });
+    const recorder = new VoiceRecorder(
+      {
+        onStateChange: handleStateChange,
+        onTranscript: handleTranscript,
+        onResult: handleResult,
+        onError: handleError,
+      },
+      { lang: language }
+    );
     recorderRef.current = recorder;
     return () => {
       recorder.stop();
       recorderRef.current = null;
     };
-  }, [handleStateChange, handleTranscript, handleResult, handleError]);
+  }, [handleStateChange, handleTranscript, handleResult, handleError, language]);
 
   const toggle = useCallback(() => {
     const r = recorderRef.current;

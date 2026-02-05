@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { CalendarApi } from '@fullcalendar/core';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay } from 'date-fns';
@@ -7,20 +7,15 @@ import type { FamilyMember } from '@shared/types';
 import { familyColorList } from '../styles/theme';
 import { getCalendarList, getEvents, createEvent } from '../services/calendarService';
 import type { CalendarAccount } from '../services/calendarService';
+import { getConfig } from '../services/configService';
 import { parseTranscriptionToEvent, AIEventParserError } from '../services/aiEventParser';
 import type { ParsedEvent } from '../services/aiEventParser';
+import type { CalendarEvent as ServiceCalendarEvent } from '../services/calendarService';
 import CalendarView from './CalendarView';
 import VoiceButton from './VoiceButton';
 import EventConfirmationModal from './EventConfirmationModal';
-
-// Default family members (can later come from store/API)
-const DEFAULT_FAMILY_MEMBERS: FamilyMember[] = [
-  { id: '1', name: 'Mom', color: familyColorList[0].DEFAULT },
-  { id: '2', name: 'Dad', color: familyColorList[1].DEFAULT },
-  { id: '3', name: 'Joey', color: familyColorList[2].DEFAULT },
-  { id: '4', name: 'Bryce', color: familyColorList[3].DEFAULT },
-  { id: '5', name: 'Julia', color: familyColorList[4].DEFAULT },
-];
+import SettingsScreen from './SettingsScreen';
+import type { ChronosConfig } from '@shared/types';
 
 const VIEW_MAP = {
   month: 'dayGridMonth',
@@ -47,14 +42,16 @@ function getDateRangeForView(date: Date, viewType: ViewType): { start: string; e
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
-export default function MainLayout() {
+export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   const calendarRef = useRef<import('@fullcalendar/react').default | null>(null);
+  const [config, setConfig] = useState<ChronosConfig | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<ViewType>('month');
-  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set()); // empty = show all
+  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [calendarList, setCalendarList] = useState<CalendarAccount[]>([]);
-  const [events, setEvents] = useState<import('../services/calendarService').CalendarEvent[]>([]);
+  const [events, setEvents] = useState<ServiceCalendarEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [calendarColors, setCalendarColors] = useState<Record<string, string>>({});
   const [calendarNames, setCalendarNames] = useState<Record<string, string>>({});
@@ -62,9 +59,24 @@ export default function MainLayout() {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const familyMembers = DEFAULT_FAMILY_MEMBERS;
+  const familyMembers = useMemo(
+    () => (config?.familyMembers?.length ? config.familyMembers : []) as FamilyMember[],
+    [config?.familyMembers]
+  );
+
+  // Apply dark mode from config
+  useEffect(() => {
+    if (!config) return;
+    const dark = config.settings.darkMode;
+    if (dark) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  }, [config]);
 
   const calendarApi = useRef<CalendarApi | null>(null);
+
+  useEffect(() => {
+    getConfig().then(setConfig);
+  }, []);
 
   useEffect(() => {
     getCalendarList()
@@ -82,7 +94,14 @@ export default function MainLayout() {
       .catch(() => {});
   }, []);
 
-  const calendarIds = calendarList.map((c) => c.id);
+  const memberIdByCalendarId = useMemo(() => {
+    const map: Record<string, string> = {};
+    familyMembers.forEach((m) => (m.calendarIds ?? []).forEach((cid) => (map[cid] = m.id)));
+    return map;
+  }, [familyMembers]);
+
+  const calendarIds = useMemo(() => calendarList.map((c) => c.id), [calendarList]);
+  const calendarIdsKey = calendarIds.join(',');
   useEffect(() => {
     if (calendarIds.length === 0) return;
     const range = getDateRangeForView(currentDate, view);
@@ -92,22 +111,33 @@ export default function MainLayout() {
       .then(setEvents)
       .catch(() => setEvents([]))
       .finally(() => setEventsLoading(false));
-  }, [currentDate, view, calendarIds.join(','), refreshKey]);
+  }, [currentDate, view, calendarIdsKey, calendarIds, calendarColors, refreshKey]);
 
-  const handleDatesSet = useCallback((dateInfo: { start: Date; view: { type: string } }) => {
-    const api = calendarRef.current?.getApi();
-    if (api) calendarApi.current = api;
-    setCurrentDate(dateInfo.start);
-  }, []);
+  const filteredEvents = useMemo(() => {
+    if (selectedMemberIds.size === 0) return events;
+    return events.filter((ev) => {
+      const memberId = memberIdByCalendarId[ev.calendarId];
+      return memberId && selectedMemberIds.has(memberId);
+    });
+  }, [events, selectedMemberIds, memberIdByCalendarId]);
+
+  const colorsAndNamesFromMembers = useMemo(() => {
+    const colors: Record<string, string> = { ...calendarColors };
+    const names: Record<string, string> = { ...calendarNames };
+    familyMembers.forEach((m) => {
+      (m.calendarIds ?? []).forEach((cid) => {
+        colors[cid] = m.color;
+        names[cid] = m.name;
+      });
+    });
+    return { colors, names };
+  }, [familyMembers, calendarColors, calendarNames]);
 
   const toggleMember = (id: string) => {
     setSelectedMemberIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       if (next.size === 0 || next.size === familyMembers.length) return new Set<string>();
       return next;
     });
@@ -162,9 +192,10 @@ export default function MainLayout() {
   const getCalendarIdForMember = useCallback(
     (memberId: string | null): string | undefined => {
       if (!memberId || calendarList.length === 0) return calendarList[0]?.id;
-      const idx = familyMembers.findIndex((m) => m.id === memberId);
-      if (idx === -1) return calendarList[0]?.id;
-      return calendarList[Math.min(idx, calendarList.length - 1)]?.id;
+      const member = familyMembers.find((m) => m.id === memberId);
+      if (!member?.calendarIds?.length) return calendarList[0]?.id;
+      const first = member.calendarIds[0];
+      return calendarList.some((c) => c.id === first) ? first : calendarList[0]?.id;
     },
     [calendarList, familyMembers]
   );
@@ -209,6 +240,7 @@ export default function MainLayout() {
           <button
             type="button"
             aria-label="Settings"
+            onClick={() => setSettingsOpen(true)}
             className="flex items-center justify-center w-12 h-12 rounded-full text-neutral-600 dark:text-neutral-dark-300 hover:bg-neutral-200/80 dark:hover:bg-neutral-dark-700/80 hover:text-neutral-900 dark:hover:text-neutral-dark-50 transition-colors min-h-[48px] min-w-[48px]"
           >
             <SettingsIcon className="w-6 h-6" />
@@ -216,51 +248,58 @@ export default function MainLayout() {
         </div>
       </motion.header>
 
-      {/* Family filter chips — below top bar, scrollable */}
-      <div className="fixed top-[56px] left-0 right-0 z-20 px-3 py-2 bg-white/50 dark:bg-neutral-dark-900/50 backdrop-blur-md border-b border-neutral-200/60 dark:border-neutral-dark-700/60">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          <motion.button
-            type="button"
-            onClick={() => setSelectedMemberIds(new Set())}
-            className={`shrink-0 rounded-full px-4 py-2 text-body-sm font-medium transition-colors min-h-[48px] flex items-center ${
-              !isFiltering
-                ? 'bg-accent-primary text-white shadow-sm'
-                : 'bg-neutral-200 dark:bg-neutral-dark-700 text-neutral-700 dark:text-neutral-dark-300 hover:bg-neutral-300 dark:hover:bg-neutral-dark-600'
-            }`}
-            whileTap={{ scale: 0.98 }}
-          >
-            All
-          </motion.button>
-          {familyMembers.map((member) => {
-            const selected = isMemberSelected(member.id);
-            return (
-              <motion.button
-                key={member.id}
-                type="button"
-                onClick={() => toggleMember(member.id)}
-                className="shrink-0 rounded-full pl-3 pr-4 py-2 text-body-sm font-medium transition-colors min-h-[48px] flex items-center gap-2 border-2 border-transparent"
-                style={{
-                  backgroundColor: selected ? `${member.color}22` : 'transparent',
-                  borderColor: selected ? member.color : 'transparent',
-                  color: selected ? undefined : 'var(--chronos-text-muted)',
-                }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <span
-                  className="w-3 h-3 rounded-full shrink-0"
-                  style={{ backgroundColor: member.color }}
-                />
-                {member.name}
-              </motion.button>
-            );
-          })}
+      {/* Family filter chips — below top bar; only when we have members */}
+      {familyMembers.length > 0 && (
+        <div className="fixed top-[56px] left-0 right-0 z-20 px-3 py-2 bg-white/50 dark:bg-neutral-dark-900/50 backdrop-blur-md border-b border-neutral-200/60 dark:border-neutral-dark-700/60">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <motion.button
+              type="button"
+              onClick={() => setSelectedMemberIds(new Set())}
+              className={`shrink-0 rounded-full px-4 py-2 text-body-sm font-medium transition-colors min-h-[48px] flex items-center ${
+                !isFiltering
+                  ? 'bg-accent-primary text-white shadow-sm'
+                  : 'bg-neutral-200 dark:bg-neutral-dark-700 text-neutral-700 dark:text-neutral-dark-300 hover:bg-neutral-300 dark:hover:bg-neutral-dark-600'
+              }`}
+              whileTap={{ scale: 0.98 }}
+            >
+              All
+            </motion.button>
+            {familyMembers.map((member) => {
+              const selected = isMemberSelected(member.id);
+              return (
+                <motion.button
+                  key={member.id}
+                  type="button"
+                  onClick={() => toggleMember(member.id)}
+                  className={`shrink-0 rounded-full pl-2 pr-4 py-2 text-body-sm font-medium transition-colors min-h-[48px] flex items-center gap-2 border-2 border-transparent ${selected ? '' : 'opacity-60'}`}
+                  style={{
+                    backgroundColor: selected ? `${member.color}22` : 'transparent',
+                    borderColor: selected ? member.color : 'transparent',
+                    color: selected ? undefined : 'var(--chronos-text-muted)',
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <span className="text-lg leading-none" aria-hidden>{member.avatar ?? '👤'}</span>
+                  {/*<span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: member.color }} />*/}
+                  {member.name}
+                </motion.button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Calendar — main area with padding for fixed top bar + filter chips */}
+      <SettingsScreen
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onDisconnect={onLogout}
+        onConfigChange={config ? () => getConfig().then(setConfig) : undefined}
+      />
+
+      {/* Calendar — main area with padding for fixed top bar + optional filter chips */}
       <main
         className="flex-1 flex flex-col min-h-0 pb-20"
-        style={{ paddingTop: '112px' }}
+        style={{ paddingTop: familyMembers.length > 0 ? 112 : 56 }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -281,12 +320,16 @@ export default function MainLayout() {
               )}
               <CalendarView
                 calendarRef={calendarRef}
-                events={events}
-                calendarColors={calendarColors}
-                calendarNames={calendarNames}
+                events={filteredEvents}
+                calendarColors={colorsAndNamesFromMembers.colors}
+                calendarNames={colorsAndNamesFromMembers.names}
                 viewType={view}
                 currentDate={currentDate}
-                onDatesSet={setCurrentDate}
+                onDatesSet={(start) => {
+                  const api = calendarRef.current?.getApi();
+                  if (api) calendarApi.current = api;
+                  setCurrentDate(start);
+                }}
                 onEventClick={handleEventClick}
                 onEventLongPress={handleEventLongPress}
               />
@@ -312,6 +355,7 @@ export default function MainLayout() {
 
         <VoiceButton
           onResult={handleVoiceResult}
+          language={config?.settings?.voiceLanguage}
           className="-mt-2"
         />
 

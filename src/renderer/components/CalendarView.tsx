@@ -220,7 +220,7 @@ export default function CalendarView({
   return (
     <div className="chronos-calendar-view h-full min-h-0 rounded-xl overflow-hidden bg-white dark:bg-neutral-dark-900 shadow-card dark:shadow-dark-card border border-neutral-200 dark:border-neutral-dark-700">
       <FullCalendar
-        ref={calendarRef}
+        ref={calendarRef as React.RefObject<InstanceType<typeof FullCalendar>>}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView={VIEW_MAP[viewType]}
         initialDate={currentDate}
@@ -240,6 +240,7 @@ export default function CalendarView({
         fixedWeekCount={false}
         slotMinWidth={48}
         dayCellClassNames="chronos-day-cell"
+        // @ts-expect-error FullCalendar supports contentClassNames; types may be incomplete
         contentClassNames="chronos-calendar-content"
         eventClassNames="chronos-fc-event"
       />

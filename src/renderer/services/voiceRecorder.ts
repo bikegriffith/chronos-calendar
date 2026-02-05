@@ -7,19 +7,6 @@
 // Web Speech API types (not in all TS DOM libs)
 // ---------------------------------------------------------------------------
 
-interface SpeechRecognitionEventMap {
-  result: SpeechRecognitionEvent;
-  end: Event;
-  error: SpeechRecognitionErrorEvent;
-  audiostart: Event;
-  audioend: Event;
-  soundstart: Event;
-  soundend: Event;
-  speechstart: Event;
-  speechend: Event;
-  start: Event;
-}
-
 interface SpeechRecognitionErrorEvent extends Event {
   error: 'aborted' | 'audio-capture' | 'network' | 'no-speech' | 'not-allowed' | 'service-not-allowed';
   message?: string;
@@ -88,6 +75,11 @@ export interface VoiceRecorderCallbacks {
   onError?: (message: string) => void;
 }
 
+export interface VoiceRecorderOptions {
+  /** BCP 47 language code for speech recognition (e.g. 'en-US', 'es-ES'). */
+  lang?: string;
+}
+
 const SpeechRecognitionCtor =
   typeof window !== 'undefined'
     ? window.SpeechRecognition || window.webkitSpeechRecognition
@@ -142,7 +134,7 @@ export class VoiceRecorder {
   private _state: VoiceRecorderState = 'idle';
   private accumulatedTranscript = '';
 
-  constructor(callbacks: VoiceRecorderCallbacks = {}) {
+  constructor(callbacks: VoiceRecorderCallbacks = {}, options: VoiceRecorderOptions = {}) {
     this.callbacks = callbacks;
     if (!SpeechRecognitionCtor) {
       this.setState('unsupported');
@@ -151,7 +143,7 @@ export class VoiceRecorder {
     this.recognition = new SpeechRecognitionCtor!();
     this.recognition.continuous = true;
     this.recognition.interimResults = true;
-    this.recognition.lang = typeof navigator !== 'undefined' ? navigator.language || 'en-US' : 'en-US';
+    this.recognition.lang = options.lang ?? (typeof navigator !== 'undefined' ? navigator.language || 'en-US' : 'en-US');
     this.recognition.maxAlternatives = 1;
 
     this.recognition.onresult = (e: SpeechRecognitionEvent) => {

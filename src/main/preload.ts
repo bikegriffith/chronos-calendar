@@ -9,4 +9,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     isAuthenticated: () => ipcRenderer.invoke('google-auth:isAuthenticated'),
     getAccessToken: () => ipcRenderer.invoke('google-auth:getAccessToken'),
   },
+  store: {
+    getConfig: () => ipcRenderer.invoke('chronos-config:get'),
+    setConfig: (updates: Record<string, unknown>) => ipcRenderer.invoke('chronos-config:set', updates),
+  },
 });

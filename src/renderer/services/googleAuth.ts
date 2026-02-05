@@ -6,10 +6,6 @@
 
 import * as browserAuth from './googleAuthBrowser';
 
-function isElectron(): boolean {
-  return typeof window !== 'undefined' && Boolean((window as Window & { electronAPI?: unknown }).electronAPI);
-}
-
 function getElectronAPI() {
   if (typeof window === 'undefined' || !(window as Window & { electronAPI?: { googleAuth?: unknown } }).electronAPI?.googleAuth) {
     return null;

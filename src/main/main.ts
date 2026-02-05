@@ -1,5 +1,6 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
+import { registerConfigHandlers } from './configStore';
 import { registerGoogleAuthHandlers } from './googleAuth';
 
 const createWindow = (): void => {
@@ -25,6 +26,7 @@ const createWindow = (): void => {
 
 // This method will be called when Electron has finished initialization
 app.on('ready', () => {
+  registerConfigHandlers(ipcMain);
   registerGoogleAuthHandlers();
   createWindow();
 });
