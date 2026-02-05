@@ -1,32 +1,26 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
+import viteTsConfigPaths from 'vite-tsconfig-paths'
+import path from 'path'
+import { nitro } from 'nitro/vite'
 
-// https://vitejs.dev/config/
+
 export default defineConfig({
-  plugins: [react()],
-  root: 'src/renderer',
-  // Load .env.local from repo root (same folder as package.json), not from root: 'src/renderer'
-  envDir: path.resolve(__dirname),
-  base: './',
-  build: {
-    outDir: '../../dist/renderer',
-    emptyOutDir: true,
-  },
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, './src'),
       '@shared': path.resolve(__dirname, './src/shared'),
     },
   },
+  plugins: [
+    viteTsConfigPaths({ projects: ['./tsconfig.json'] }),
+    tanstackStart(),
+    nitro(),
+    viteReact(),
+  ],
   server: {
     port: 5173,
-    // Proxy Anthropic API to avoid CORS when calling from the browser (dev only).
-    proxy: {
-      '/api/anthropic': {
-        target: 'https://api.anthropic.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/anthropic/, ''),
-      },
-    },
   },
-});
+  envDir: __dirname,
+})
