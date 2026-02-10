@@ -100,9 +100,27 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   const dragX = useMotionValue(0);
   const syncState = useSyncState();
   const shouldReduceMotion = useReducedMotion();
+  const layoutContainerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const reducedTransition = useMemo(() => (shouldReduceMotion ? { duration: 0 } : { type: 'spring' as const, damping: 26, stiffness: 320 }), [shouldReduceMotion]);
   const reducedTransitionFast = useMemo(() => (shouldReduceMotion ? { duration: 0 } : { type: 'spring' as const, stiffness: 400, damping: 25 }), [shouldReduceMotion]);
   const reducedDuration = (d: number) => (shouldReduceMotion ? 0 : d);
+
+  const toggleFullscreen = useCallback(() => {
+    const el = layoutContainerRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      el.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
 
   useEffect(() => {
     return startSyncService();
@@ -391,8 +409,24 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
     []
   );
 
+  // When fullscreen, mirror theme onto this element so [data-theme] and .dark apply
+  // (document.documentElement is outside the fullscreen subtree in the browser’s fullscreen layer)
+  const theme = config ? getThemeOrDefault(config.settings.theme) : null;
+  const fullscreenThemeAttrs =
+    isFullscreen && theme
+      ? {
+          'data-theme': theme.id,
+          className: `chronos-fullscreen-container flex flex-col h-screen overflow-hidden chronos-fullscreen-active${theme.dark ? ' dark' : ''}`,
+        }
+      : {
+          className: 'chronos-fullscreen-container flex flex-col h-screen overflow-hidden bg-transparent',
+        };
+
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-transparent">
+    <div
+      ref={layoutContainerRef}
+      {...fullscreenThemeAttrs}
+    >
       {/* Single compact bar: filters (left) | date (center) | settings (right) — liquid glass */}
       <motion.header
         initial={shouldReduceMotion ? false : { y: -12, opacity: 0 }}
@@ -489,6 +523,20 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
               {syncState.pendingCount} pending
             </span>
           )}
+          <motion.button
+            type="button"
+            aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            onClick={toggleFullscreen}
+            className="chronos-glass-pill flex items-center justify-center w-10 h-10 rounded-full text-neutral-600 dark:text-neutral-dark-300 hover:text-neutral-900 dark:hover:text-neutral-dark-50 transition-colors shrink-0"
+            whileTap={{ scale: 0.92 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+          >
+            {isFullscreen ? (
+              <ExitFullscreenIcon className="w-5 h-5" />
+            ) : (
+              <FullscreenIcon className="w-5 h-5" />
+            )}
+          </motion.button>
           <motion.button
             type="button"
             aria-label="Settings"
@@ -742,6 +790,22 @@ function PlusIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+    </svg>
+  );
+}
+
+function FullscreenIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+    </svg>
+  );
+}
+
+function ExitFullscreenIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
     </svg>
   );
 }

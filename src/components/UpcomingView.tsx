@@ -2,6 +2,7 @@ import React, { useRef, useCallback, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { format, addDays, parseISO, startOfDay, endOfDay } from 'date-fns';
 import type { CalendarEvent as ServiceCalendarEvent } from '@/services/calendarService';
+import { getEventTitleEmoji } from '@/utils/eventTitleEmoji';
 
 const LONG_PRESS_MS = 500;
 const TITLE_MAX_CHARS = 36;
@@ -110,8 +111,11 @@ const UpcomingEventCard = React.memo(function UpcomingEventCard({
 }: UpcomingEventCardProps) {
   const color = ev.color ?? calendarColors[ev.calendarId] ?? DEFAULT_COLOR;
   const memberName = calendarNames?.[ev.calendarId] ?? ev.calendarId.slice(0, 8);
+  const titleEmoji = getEventTitleEmoji(ev.summary || '');
   const avatarEmoji = calendarAvatars?.[ev.calendarId];
   const initial = getInitial(memberName);
+  const displayIcon = titleEmoji ?? avatarEmoji ?? initial;
+  const showEmojiSize = Boolean(titleEmoji ?? avatarEmoji);
   const title = (ev.summary || '(No title)').length > TITLE_MAX_CHARS
     ? (ev.summary || '(No title)').slice(0, TITLE_MAX_CHARS - 1).trim() + '…'
     : (ev.summary || '(No title)');
@@ -136,10 +140,10 @@ const UpcomingEventCard = React.memo(function UpcomingEventCard({
       onTouchCancel={onEventTouchEnd}
     >
       <span
-        className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold leading-none ${avatarEmoji ? 'text-base' : 'text-xs'}`}
+        className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold leading-none ${showEmojiSize ? 'text-base' : 'text-xs'}`}
         style={{ backgroundColor: color }}
       >
-        {avatarEmoji ?? initial}
+        {displayIcon}
       </span>
       <span className="flex-1 min-w-0 flex flex-col gap-0.5">
         {!isAllDay && timeStr && (

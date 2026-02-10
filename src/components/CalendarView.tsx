@@ -6,6 +6,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import type { EventContentArg, EventClickArg, EventApi, DayCellMountArg } from '@fullcalendar/core';
 import type { DateClickArg } from '@fullcalendar/interaction';
 import type { CalendarEvent as ServiceCalendarEvent } from '@/services/calendarService';
+import { getEventTitleEmoji } from '@/utils/eventTitleEmoji';
 
 const LONG_PRESS_MS = 500;
 const TITLE_MAX_CHARS = 28;
@@ -228,13 +229,18 @@ function CalendarViewInner({
       raw?: ServiceCalendarEvent;
     };
     const memberName = ext?.memberName ?? '';
+    const fullTitle = arg.event.title ?? '';
+    const titleEmoji = getEventTitleEmoji(fullTitle);
     const initial = getInitial(memberName);
-    const title = truncateTitle(arg.event.title ?? '', TITLE_MAX_CHARS);
+    const displayIcon = titleEmoji ?? initial;
+    const isEmoji = titleEmoji !== null;
+    const title = truncateTitle(fullTitle, TITLE_MAX_CHARS);
     const isAllDay = arg.event.allDay;
     const timeText = arg.timeText ? `${escapeHtml(arg.timeText)} ` : '';
     const borderColor = arg.borderColor || arg.backgroundColor;
 
-    const initialEl = `<span class="chronos-event-initial" style="background-color:${escapeHtml(borderColor)};color:#fff">${escapeHtml(initial)}</span>`;
+    const initialClass = `chronos-event-initial${isEmoji ? ' chronos-event-initial--emoji' : ''}`;
+    const initialEl = `<span class="${initialClass}" style="background-color:${escapeHtml(borderColor)};color:#fff">${isEmoji ? displayIcon : escapeHtml(displayIcon)}</span>`;
     const timeEl = !isAllDay && timeText ? `<span class="chronos-event-time">${timeText}</span>` : '';
     const titleEl = `<span class="chronos-event-title">${escapeHtml(title)}</span>`;
 
