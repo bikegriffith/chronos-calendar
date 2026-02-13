@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 
-export const TOUCH_KEYBOARD_HEIGHT_PX = 350;
+export const TOUCH_KEYBOARD_HEIGHT_PX = 270;
 
 export interface TouchKeyboardContextValue {
   useTouchKeyboard: boolean;
@@ -73,27 +73,30 @@ export function TouchKeyboardProvider({
     setKeyboardVisible(false);
   }, []);
 
-  const sendKey = useCallback((key: string) => {
-    const onChange = onChangeRef.current;
-    if (!onChange) return;
-    if (key === 'backspace') {
+  const sendKey = useCallback(
+    (key: string) => {
+      const onChange = onChangeRef.current;
+      if (!onChange) return;
+      if (key === 'backspace') {
+        setActiveValue((prev) => {
+          const next = prev.slice(0, -1);
+          onChange(next);
+          return next;
+        });
+        return;
+      }
+      if (key === 'done') {
+        closeKeyboard();
+        return;
+      }
       setActiveValue((prev) => {
-        const next = prev.slice(0, -1);
+        const next = prev + key;
         onChange(next);
         return next;
       });
-      return;
-    }
-    if (key === 'done') {
-      closeKeyboard();
-      return;
-    }
-    setActiveValue((prev) => {
-      const next = prev + key;
-      onChange(next);
-      return next;
-    });
-  }, [closeKeyboard]);
+    },
+    [closeKeyboard]
+  );
 
   const insertText = useCallback((text: string) => {
     const onChange = onChangeRef.current;

@@ -23,6 +23,7 @@ release
 *.njsproj
 *.sln
 *.sw?
+.output/
 
 # Environment variables
 .env
