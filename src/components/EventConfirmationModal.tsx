@@ -5,6 +5,8 @@ import type { ParsedEvent } from '@/services/aiEventParser';
 import { parsedEventToNewEventInput } from '@/services/aiEventParser';
 import type { NewEventInput } from '@/store/calendarStore';
 import type { FamilyMember } from '@shared/types';
+import { TouchFriendlyInput, TouchFriendlyTextarea } from '@/components/TouchKeyboard';
+import { useTouchKeyboardContext } from '@/contexts/TouchKeyboardContext';
 
 export interface EventConfirmationModalProps {
   open: boolean;
@@ -145,11 +147,15 @@ export default function EventConfirmationModal({
     onCancel();
   }, [phase, onCancel]);
 
+  const ctx = useTouchKeyboardContext();
+  const keyboardHeight = ctx?.keyboardHeight ?? 0;
+
   return (
     <AnimatePresence>
       {open && (
       <motion.div
         className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
+        style={{ paddingBottom: keyboardHeight }}
         initial={false}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -170,7 +176,8 @@ export default function EventConfirmationModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="event-confirmation-title"
-          className="relative w-full max-w-lg rounded-t-2xl sm:rounded-2xl bg-white dark:bg-neutral-dark-800 shadow-modal dark:shadow-dark-modal border border-neutral-200/80 dark:border-neutral-dark-600 overflow-hidden"
+          className="relative w-full max-w-lg rounded-t-2xl sm:rounded-2xl bg-white dark:bg-neutral-dark-800 shadow-modal dark:shadow-dark-modal border border-neutral-200/80 dark:border-neutral-dark-600 overflow-hidden flex flex-col"
+          style={{ maxHeight: keyboardHeight ? `calc(100vh - 2rem - ${keyboardHeight}px)` : undefined }}
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
@@ -178,11 +185,11 @@ export default function EventConfirmationModal({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Handle bar (mobile) */}
-          <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <div className="sm:hidden flex justify-center pt-2 pb-1 shrink-0">
             <div className="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-dark-600" />
           </div>
 
-          <div className="p-5 sm:p-6 pb-8 max-h-[85vh] overflow-y-auto">
+          <div className="p-5 sm:p-6 pb-8 overflow-y-auto flex-1 min-h-0" style={{ maxHeight: keyboardHeight ? `calc(100vh - 4rem - ${keyboardHeight}px)` : '85vh' }}>
             {phase === 'success' ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -215,11 +222,11 @@ export default function EventConfirmationModal({
                     <label htmlFor="event-title" className="block text-body-sm font-medium text-neutral-700 dark:text-neutral-dark-300 mb-1">
                       Title
                     </label>
-                    <input
+                    <TouchFriendlyInput
                       id="event-title"
                       type="text"
                       value={title}
-                      onChange={(e) => setTitle(e.target.value)}
+                      onChange={setTitle}
                       placeholder="Event title"
                       className="w-full min-h-[48px] px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-dark-600 bg-white dark:bg-neutral-dark-900 text-neutral-900 dark:text-neutral-dark-50 placeholder:text-neutral-400 dark:placeholder:text-neutral-dark-500 focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-body"
                       disabled={phase === 'loading'}
@@ -321,10 +328,10 @@ export default function EventConfirmationModal({
                       <FileText className="w-4 h-4" />
                       Notes
                     </label>
-                    <textarea
+                    <TouchFriendlyTextarea
                       id="event-notes"
                       value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
+                      onChange={setNotes}
                       placeholder="Optional notes"
                       rows={2}
                       className="w-full min-h-[48px] px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-dark-600 bg-white dark:bg-neutral-dark-900 text-neutral-900 dark:text-neutral-dark-50 placeholder:text-neutral-400 dark:placeholder:text-neutral-dark-500 focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent text-body resize-none"

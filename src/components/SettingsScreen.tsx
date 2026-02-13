@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LogOut, User, Calendar, Moon, Mic } from 'lucide-react';
+import { X, LogOut, User, Calendar, Moon, Mic, Keyboard } from 'lucide-react';
 import { familyColorList } from '@/styles/theme';
 import { CHRONOS_THEMES, getThemeOrDefault } from '@/styles/themes';
 import type { FamilyMember, ChronosConfig, AppSettings } from '@shared/types';
@@ -9,6 +9,8 @@ import { getCalendarsWithCache } from '@/services/syncService';
 import type { CalendarAccount } from '@/services/calendarService';
 import { getConfig, setConfig, normalizeFamilyMember } from '@/services/configService';
 import { login, logout } from '@/services/googleAuth';
+import { TouchFriendlyInput } from '@/components/TouchKeyboard';
+import { useTouchKeyboardContext } from '@/contexts/TouchKeyboardContext';
 
 const VOICE_LANGUAGES: { value: string; label: string }[] = [
   { value: 'en-US', label: 'English (US)' },
@@ -156,6 +158,9 @@ export default function SettingsScreen({ open, onClose, onDisconnect, onConfigCh
     }
   }, [load]);
 
+  const ctx = useTouchKeyboardContext();
+  const keyboardHeight = ctx?.keyboardHeight ?? 0;
+
   if (!open) return null;
 
   return (
@@ -172,7 +177,8 @@ export default function SettingsScreen({ open, onClose, onDisconnect, onConfigCh
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-white dark:bg-neutral-dark-900 shadow-modal dark:shadow-dark-modal flex flex-col"
+        className="fixed top-0 right-0 z-50 w-full max-w-md bg-white dark:bg-neutral-dark-900 shadow-modal dark:shadow-dark-modal flex flex-col"
+        style={{ bottom: keyboardHeight, height: keyboardHeight ? `calc(100vh - ${keyboardHeight}px)` : '100vh' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-dark-700">
@@ -215,10 +221,10 @@ export default function SettingsScreen({ open, onClose, onDisconnect, onConfigCh
                         >
                           {member.avatar ?? '👤'}
                         </span>
-                        <input
+                        <TouchFriendlyInput
                           type="text"
                           value={member.name}
-                          onChange={(e) => updateMember(member.id, { name: e.target.value })}
+                          onChange={(v) => updateMember(member.id, { name: v })}
                           placeholder="Name"
                           className="flex-1 px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-dark-600 bg-white dark:bg-neutral-dark-800 text-body font-medium focus:outline-none focus:ring-2 focus:ring-accent-primary"
                         />
@@ -355,6 +361,27 @@ export default function SettingsScreen({ open, onClose, onDisconnect, onConfigCh
                     );
                   })}
                 </div>
+              </section>
+
+              {/* Touch-friendly keyboard */}
+              <section>
+                <h3 className="flex items-center gap-2 text-body-sm font-semibold text-neutral-500 dark:text-neutral-dark-400 uppercase tracking-wide mb-3">
+                  <Keyboard className="w-4 h-4" /> Touch keyboard
+                </h3>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.settings.useTouchKeyboard ?? false}
+                    onChange={(e) => updateSettings({ useTouchKeyboard: e.target.checked })}
+                    className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-dark-600 text-accent-primary focus:ring-accent-primary"
+                  />
+                  <span className="text-body text-neutral-900 dark:text-neutral-dark-50">
+                    Use app keyboard for text fields
+                  </span>
+                </label>
+                <p className="mt-2 text-caption text-neutral-500 dark:text-neutral-dark-400">
+                  Shows a touch-friendly keyboard from the bottom when you focus a text field. Best for external touchscreens (e.g. macOS with touch monitor).
+                </p>
               </section>
 
               {/* Voice language */}

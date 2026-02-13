@@ -10,6 +10,7 @@ const STORAGE_KEY = 'chronos-config'
 const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light-sky',
   voiceLanguage: typeof navigator !== 'undefined' ? navigator.language || 'en-US' : 'en-US',
+  useTouchKeyboard: false,
 }
 
 const DEFAULT_CONFIG: ChronosConfig = {

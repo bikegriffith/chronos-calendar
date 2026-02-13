@@ -5,6 +5,8 @@ import { Pencil, Trash2, Share2, MapPin, FileText } from 'lucide-react';
 import type { CalendarEvent as ServiceCalendarEvent } from '@/services/calendarService';
 import { updateEventWithSync } from '@/services/syncService';
 import type { UpdateEventPatch } from '@/store/calendarStore';
+import { TouchFriendlyInput, TouchFriendlyTextarea } from '@/components/TouchKeyboard';
+import { useTouchKeyboardContext } from '@/contexts/TouchKeyboardContext';
 
 export interface EventDetailsPopoverProps {
   event: ServiceCalendarEvent | null;
@@ -233,6 +235,8 @@ export default function EventDetailsPopover({
     exit: { opacity: 0, scale: 0.96, y: 4 },
   };
   const transition = { type: 'spring' as const, damping: 28, stiffness: 300 };
+  const ctx = useTouchKeyboardContext();
+  const keyboardHeight = ctx?.keyboardHeight ?? 0;
 
   return (
     <AnimatePresence>
@@ -257,8 +261,8 @@ export default function EventDetailsPopover({
           transition={transition}
           className={`
             fixed z-50 overflow-hidden
-            left-0 right-0 max-h-[85vh] flex flex-col
-            sm:left-auto sm:right-auto sm:max-w-md sm:min-w-[320px] sm:max-h-[90vh] sm:rounded-2xl
+            left-0 right-0 flex flex-col
+            sm:left-auto sm:right-auto sm:max-w-md sm:min-w-[320px] sm:rounded-2xl
             rounded-t-2xl
             bg-white/95 dark:bg-neutral-dark-800/95 backdrop-blur-xl
             shadow-modal dark:shadow-dark-modal
@@ -267,12 +271,13 @@ export default function EventDetailsPopover({
           style={
             isDesktop && anchorRect
               ? {
-                  top: Math.min(anchorRect.top + anchorRect.height + 8, window.innerHeight - 280),
+                  top: Math.min(anchorRect.top + anchorRect.height + 8, window.innerHeight - 280 - keyboardHeight),
                   left: Math.max(16, Math.min(anchorRect.left, window.innerWidth - 336)),
+                  maxHeight: keyboardHeight ? `calc(90vh - ${keyboardHeight}px)` : '90vh',
                 }
               : isDesktop
-                ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
-                : { bottom: 0 }
+                ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', maxHeight: keyboardHeight ? `calc(90vh - ${keyboardHeight}px)` : '90vh' }
+                : { bottom: keyboardHeight, maxHeight: keyboardHeight ? `calc(85vh - ${keyboardHeight}px)` : '85vh' }
           }
         >
           {/* Color bar */}
@@ -291,10 +296,10 @@ export default function EventDetailsPopover({
                   <label className="block text-caption font-medium text-neutral-600 dark:text-neutral-dark-400 mb-1">
                     Title
                   </label>
-                  <input
+                  <TouchFriendlyInput
                     type="text"
                     value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
+                    onChange={setEditTitle}
                     className="w-full min-h-[48px] px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-dark-600 bg-white dark:bg-neutral-dark-900 text-neutral-900 dark:text-neutral-dark-50 focus:outline-none focus:ring-2 focus:ring-accent-primary"
                     placeholder="Event title"
                     disabled={saving}
@@ -358,10 +363,10 @@ export default function EventDetailsPopover({
                   <label className="block text-caption font-medium text-neutral-600 dark:text-neutral-dark-400 mb-1">
                     Location
                   </label>
-                  <input
+                  <TouchFriendlyInput
                     type="text"
                     value={editLocation}
-                    onChange={(e) => setEditLocation(e.target.value)}
+                    onChange={setEditLocation}
                     className="w-full min-h-[48px] px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-dark-600 bg-white dark:bg-neutral-dark-900 focus:outline-none focus:ring-2 focus:ring-accent-primary"
                     placeholder="Add location"
                     disabled={saving}
@@ -371,9 +376,9 @@ export default function EventDetailsPopover({
                   <label className="block text-caption font-medium text-neutral-600 dark:text-neutral-dark-400 mb-1">
                     Notes
                   </label>
-                  <textarea
+                  <TouchFriendlyTextarea
                     value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
+                    onChange={setEditDescription}
                     rows={3}
                     className="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-dark-600 bg-white dark:bg-neutral-dark-900 focus:outline-none focus:ring-2 focus:ring-accent-primary resize-none"
                     placeholder="Add description"

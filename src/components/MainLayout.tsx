@@ -27,6 +27,8 @@ import { CalendarSkeleton } from '@/components/ui/CalendarSkeleton'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { SyncProgressBar } from '@/components/ui/SyncProgressBar'
 import { useSyncState } from '@/hooks/useSyncState'
+import { TouchKeyboardProvider, useTouchKeyboardContext } from '@/contexts/TouchKeyboardContext'
+import { TouchKeyboard, TOUCH_KEYBOARD_HEIGHT_PX } from '@/components/TouchKeyboard'
 
 const EventConfirmationModal = lazy(() => import('@/components/EventConfirmationModal').then((m) => ({ default: m.default })))
 const EditEventModal = lazy(() => import('@/components/EditEventModal').then((m) => ({ default: m.default })))
@@ -422,7 +424,12 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
           className: 'chronos-fullscreen-container flex flex-col h-screen overflow-hidden bg-transparent',
         };
 
+  const useTouchKeyboard = config?.settings?.useTouchKeyboard ?? false;
+
   return (
+    <TouchKeyboardProvider useTouchKeyboard={useTouchKeyboard}>
+      <WithKeyboardHeight>
+        {(keyboardHeight) => (
     <div
       ref={layoutContainerRef}
       {...fullscreenThemeAttrs}
@@ -559,10 +566,10 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         />
       </Suspense>
 
-      {/* Calendar — main area with swipe-to-navigate and padding for single compact bar */}
+      {/* Calendar — main area with swipe-to-navigate and padding for single compact bar; extra padding when touch keyboard is open */}
       <main
-        className="flex-1 flex flex-col min-h-0 pb-22 overflow-hidden"
-        style={{ paddingTop: 56 }}
+        className="flex-1 flex flex-col min-h-0 overflow-hidden"
+        style={{ paddingTop: 56, paddingBottom: 88 + keyboardHeight }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMovePinch}
         onTouchEnd={(e) => {
@@ -663,12 +670,13 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         </motion.div>
       </main>
 
-      {/* Bottom Bar — liquid glass */}
+      {/* Bottom Bar — liquid glass; shifts up when touch keyboard is open */}
       <motion.footer
         initial={shouldReduceMotion ? false : { y: 16, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: reducedDuration(0.35), ease: [0.25, 0.46, 0.45, 0.94], delay: reducedDuration(0.04) }}
-        className="chronos-glass-bar fixed bottom-0 left-0 right-0 z-30 flex items-center justify-between gap-3 px-4 py-3 min-h-[76px] border-t border-[var(--chronos-border)]"
+        className="chronos-glass-bar fixed left-0 right-0 z-30 flex items-center justify-between gap-3 px-4 py-3 min-h-[76px] border-t border-[var(--chronos-border)]"
+        style={{ bottom: keyboardHeight }}
       >
         <motion.button
           type="button"
@@ -774,7 +782,22 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
         </div>
       )}
     </div>
+        )}
+      </WithKeyboardHeight>
+      <TouchKeyboard />
+    </TouchKeyboardProvider>
   );
+}
+
+/** Provides keyboard height (px) to children when touch keyboard is visible; used so main/footer can shrink viewport. */
+function WithKeyboardHeight({
+  children,
+}: {
+  children: (keyboardHeight: number) => React.ReactNode;
+}) {
+  const ctx = useTouchKeyboardContext();
+  const keyboardHeight = ctx?.keyboardVisible ? TOUCH_KEYBOARD_HEIGHT_PX : 0;
+  return <>{children(keyboardHeight)}</>;
 }
 
 function SettingsIcon({ className }: { className?: string }) {
@@ -809,4 +832,3 @@ function ExitFullscreenIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-

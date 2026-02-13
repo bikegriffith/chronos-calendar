@@ -5,6 +5,8 @@ import { Check, Loader2 } from 'lucide-react';
 import type { CalendarEvent as ServiceCalendarEvent } from '@/services/calendarService';
 import { updateEventWithSync } from '@/services/syncService';
 import type { UpdateEventPatch } from '@/store/calendarStore';
+import { TouchFriendlyInput } from '@/components/TouchKeyboard';
+import { useTouchKeyboardContext } from '@/contexts/TouchKeyboardContext';
 
 type EditModalPhase = 'edit' | 'saving' | 'success';
 
@@ -91,6 +93,8 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
   const allDay = !startTime && !endTime;
   const saving = phase === 'saving';
   const success = phase === 'success';
+  const ctx = useTouchKeyboardContext();
+  const keyboardHeight = ctx?.keyboardHeight ?? 0;
 
   return (
     <AnimatePresence>
@@ -99,6 +103,7 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
+        style={{ paddingBottom: keyboardHeight }}
       >
         <div
           className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
@@ -113,10 +118,11 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-          className="relative w-full max-w-lg rounded-t-2xl sm:rounded-2xl bg-white dark:bg-neutral-dark-800 shadow-modal border border-neutral-200 dark:border-neutral-dark-600 overflow-hidden"
+          className="relative w-full max-w-lg rounded-t-2xl sm:rounded-2xl bg-white dark:bg-neutral-dark-800 shadow-modal border border-neutral-200 dark:border-neutral-dark-600 overflow-hidden max-h-[calc(100vh-2rem)] flex flex-col"
+          style={{ maxHeight: keyboardHeight ? `calc(100vh - 2rem - ${keyboardHeight}px)` : undefined }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-5 pb-8">
+          <div className="p-5 pb-8 overflow-y-auto flex-1 min-h-0">
             {success ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -143,11 +149,11 @@ export default function EditEventModal({ event, onClose, onSaved }: EditEventMod
                 <label htmlFor="edit-title" className="block text-body-sm font-medium text-neutral-700 dark:text-neutral-dark-300 mb-1">
                   Title
                 </label>
-                <input
+                <TouchFriendlyInput
                   id="edit-title"
                   type="text"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={setTitle}
                   className="w-full min-h-[48px] px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-dark-600 bg-white dark:bg-neutral-dark-900 text-neutral-900 dark:text-neutral-dark-50 focus:outline-none focus:ring-2 focus:ring-accent-primary"
                   disabled={saving}
                 />

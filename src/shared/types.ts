@@ -26,6 +26,8 @@ export interface AppSettings {
   /** @deprecated Use theme instead. Kept for migration. */
   darkMode?: boolean;
   voiceLanguage: string;
+  /** When true, show app’s touch-friendly keyboard for text inputs (e.g. external touchscreen). */
+  useTouchKeyboard?: boolean;
 }
 
 /** Onboarding step: 0=Welcome, 1=Connect Google, 2=Family, 3=Voice, 4=Finish */

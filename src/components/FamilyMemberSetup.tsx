@@ -6,6 +6,7 @@ import { AVATAR_EMOJIS } from '@shared/constants';
 import { getCalendarsWithCache } from '@/services/syncService';
 import type { CalendarAccount } from '@/services/calendarService';
 import { setConfig, normalizeFamilyMember } from '@/services/configService';
+import { TouchFriendlyInput } from '@/components/TouchKeyboard';
 
 function generateId(): string {
   return `fm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -156,11 +157,11 @@ export default function FamilyMemberSetup({ onComplete, finishButtonLabel, hideT
                     {member.avatar ?? '👤'}
                   </motion.span>
                   <div className="flex-1 min-w-0 space-y-3">
-                    <input
+                    <TouchFriendlyInput
                       type="text"
                       placeholder="Name"
                       value={member.name}
-                      onChange={(e) => updateMember(member.id, { name: e.target.value })}
+                      onChange={(v) => updateMember(member.id, { name: v })}
                       className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-dark-600 bg-white dark:bg-neutral-dark-800 text-neutral-900 dark:text-neutral-dark-50 placeholder:text-neutral-400 dark:placeholder:text-neutral-dark-500 text-body font-medium focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
                     />
                     <div className="flex flex-wrap gap-2">
