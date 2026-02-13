@@ -2,18 +2,20 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
 
-export const TOUCH_KEYBOARD_HEIGHT_PX = 320;
+export const TOUCH_KEYBOARD_HEIGHT_PX = 350;
 
 export interface TouchKeyboardContextValue {
   useTouchKeyboard: boolean;
   keyboardVisible: boolean;
   /** Height in px when keyboard is visible; 0 when hidden. */
   keyboardHeight: number;
+  voiceLanguage?: string;
   openKeyboard: (
     id: string,
     value: string,
@@ -22,6 +24,10 @@ export interface TouchKeyboardContextValue {
   closeKeyboard: () => void;
   /** Insert a character or 'backspace' or 'done' */
   sendKey: (key: string) => void;
+  /** Insert multiple characters (e.g. from voice input) at end of value */
+  insertText: (text: string) => void;
+  /** Sync current value from input (e.g. after hardware keyboard input) */
+  syncValue: (id: string, value: string) => void;
   /** Current value of the focused field (for backspace) */
   activeValue: string;
 }
@@ -36,11 +42,13 @@ export function useTouchKeyboardContext(): TouchKeyboardContextValue | null {
 
 interface TouchKeyboardProviderProps {
   useTouchKeyboard: boolean;
+  voiceLanguage?: string;
   children: ReactNode;
 }
 
 export function TouchKeyboardProvider({
   useTouchKeyboard,
+  voiceLanguage,
   children,
 }: TouchKeyboardProviderProps) {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -87,13 +95,42 @@ export function TouchKeyboardProvider({
     });
   }, [closeKeyboard]);
 
+  const insertText = useCallback((text: string) => {
+    const onChange = onChangeRef.current;
+    if (!onChange || !text) return;
+    setActiveValue((prev) => {
+      const next = prev + text;
+      onChange(next);
+      return next;
+    });
+  }, []);
+
+  const syncValue = useCallback((id: string, value: string) => {
+    if (activeIdRef.current === id) setActiveValue(value);
+  }, []);
+
+  useEffect(() => {
+    if (!keyboardVisible) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeKeyboard();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [keyboardVisible, closeKeyboard]);
+
   const value: TouchKeyboardContextValue = {
     useTouchKeyboard,
     keyboardVisible,
     keyboardHeight: keyboardVisible ? TOUCH_KEYBOARD_HEIGHT_PX : 0,
+    voiceLanguage,
     openKeyboard,
     closeKeyboard,
     sendKey,
+    insertText,
+    syncValue,
     activeValue,
   };
 

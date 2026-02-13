@@ -55,7 +55,9 @@ function eventOverlapsDay(ev: ServiceCalendarEvent, day: Date): boolean {
   try {
     const start = parseISO(startStr);
     const end = parseISO(endStr);
-    return start.getTime() < dayEnd.getTime() && end.getTime() > dayStart.getTime();
+    return (
+      start.getTime() < dayEnd.getTime() && end.getTime() > dayStart.getTime()
+    );
   } catch {
     return false;
   }
@@ -72,7 +74,9 @@ function formatEventTime(ev: ServiceCalendarEvent): string {
   }
 }
 
-function sortEventsForDay(events: ServiceCalendarEvent[]): ServiceCalendarEvent[] {
+function sortEventsForDay(
+  events: ServiceCalendarEvent[]
+): ServiceCalendarEvent[] {
   return [...events].sort((a, b) => {
     const aAllDay = Boolean(a.start?.date);
     const bAllDay = Boolean(b.start?.date);
@@ -93,7 +97,10 @@ interface UpcomingEventCardProps {
   calendarColors: Record<string, string>;
   calendarNames?: Record<string, string>;
   calendarAvatars?: Record<string, string>;
-  onEventClick: (ev: ServiceCalendarEvent, e: React.MouseEvent | React.TouchEvent) => void;
+  onEventClick: (
+    ev: ServiceCalendarEvent,
+    e: React.MouseEvent | React.TouchEvent
+  ) => void;
   onEventTouchStart: (ev: ServiceCalendarEvent) => void;
   onEventTouchMove: () => void;
   onEventTouchEnd: () => void;
@@ -110,15 +117,17 @@ const UpcomingEventCard = React.memo(function UpcomingEventCard({
   onEventTouchEnd,
 }: UpcomingEventCardProps) {
   const color = ev.color ?? calendarColors[ev.calendarId] ?? DEFAULT_COLOR;
-  const memberName = calendarNames?.[ev.calendarId] ?? ev.calendarId.slice(0, 8);
+  const memberName =
+    calendarNames?.[ev.calendarId] ?? ev.calendarId.slice(0, 8);
   const titleEmoji = getEventTitleEmoji(ev.summary || '');
   const avatarEmoji = calendarAvatars?.[ev.calendarId];
   const initial = getInitial(memberName);
   const displayIcon = titleEmoji ?? avatarEmoji ?? initial;
   const showEmojiSize = Boolean(titleEmoji ?? avatarEmoji);
-  const title = (ev.summary || '(No title)').length > TITLE_MAX_CHARS
-    ? (ev.summary || '(No title)').slice(0, TITLE_MAX_CHARS - 1).trim() + '…'
-    : (ev.summary || '(No title)');
+  const title =
+    (ev.summary || '(No title)').length > TITLE_MAX_CHARS
+      ? (ev.summary || '(No title)').slice(0, TITLE_MAX_CHARS - 1).trim() + '…'
+      : ev.summary || '(No title)';
   const timeStr = formatEventTime(ev);
   const isAllDay = Boolean(ev.start?.date);
 
@@ -147,7 +156,9 @@ const UpcomingEventCard = React.memo(function UpcomingEventCard({
       </span>
       <span className="flex-1 min-w-0 flex flex-col gap-0.5">
         {!isAllDay && timeStr && (
-          <span className="text-xs font-medium text-[var(--chronos-text-muted)]">{timeStr}</span>
+          <span className="text-xs font-medium text-[var(--chronos-text-muted)]">
+            {timeStr}
+          </span>
         )}
         <span className="text-sm font-medium text-[var(--chronos-text)] leading-snug break-words line-clamp-2">
           {title}
@@ -266,7 +277,10 @@ interface DayColumnProps {
   calendarNames?: Record<string, string>;
   calendarAvatars?: Record<string, string>;
   onDateClick?: (date: Date) => void;
-  onEventClick: (ev: ServiceCalendarEvent, e: React.MouseEvent | React.TouchEvent) => void;
+  onEventClick: (
+    ev: ServiceCalendarEvent,
+    e: React.MouseEvent | React.TouchEvent
+  ) => void;
   onEventTouchStart: (ev: ServiceCalendarEvent) => void;
   onEventTouchMove: () => void;
   onEventTouchEnd: () => void;
@@ -305,7 +319,10 @@ function DayColumn({
       onKeyDown={(e) => e.key === 'Enter' && onDateClick?.(day)}
       aria-label={`Add event for ${format(day, 'EEEE, MMM d')}`}
     >
-      <div className="p-3 relative min-h-[120px]" style={{ height: Math.max(totalHeight + 24, 120) }}>
+      <div
+        className="p-3 relative min-h-[120px]"
+        style={{ height: Math.max(totalHeight + 24, 120) }}
+      >
         {virtualItems.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center text-body-sm text-[var(--chronos-text-muted)]">
             Tap to add

@@ -427,7 +427,7 @@ export default function MainLayout({ onLogout }: { onLogout?: () => void }) {
   const useTouchKeyboard = config?.settings?.useTouchKeyboard ?? false;
 
   return (
-    <TouchKeyboardProvider useTouchKeyboard={useTouchKeyboard}>
+    <TouchKeyboardProvider useTouchKeyboard={useTouchKeyboard} voiceLanguage={config?.settings?.voiceLanguage}>
       <WithKeyboardHeight>
         {(keyboardHeight) => (
     <div

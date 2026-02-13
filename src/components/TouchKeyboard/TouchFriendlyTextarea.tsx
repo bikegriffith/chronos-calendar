@@ -19,6 +19,7 @@ export function TouchFriendlyTextarea({
   onChange,
   onFocus,
   onBlur,
+  className,
   ...rest
 }: TouchFriendlyTextareaProps) {
   const id = useId();
@@ -59,17 +60,27 @@ export function TouchFriendlyTextarea({
     [useTouch, ctx, id, value, onChange, rest]
   );
 
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const v = e.target.value;
+      if (useTouch && ctx) ctx.syncValue(id, v);
+      onChange(v);
+    },
+    [useTouch, ctx, id, onChange]
+  );
+
   return (
     <textarea
       {...rest}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      readOnly={useTouch}
+      onChange={handleChange}
+      readOnly={false}
       onFocus={handleFocus}
       onBlur={handleBlur}
       onClick={handleClick}
       inputMode={useTouch ? 'none' : rest.inputMode}
       autoComplete={useTouch ? 'off' : rest.autoComplete}
+      className={[className, useTouch && 'caret-sky-600 dark:caret-sky-400'].filter(Boolean).join(' ')}
     />
   );
 }

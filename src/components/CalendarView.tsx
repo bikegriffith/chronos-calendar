@@ -3,7 +3,12 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import type { EventContentArg, EventClickArg, EventApi, DayCellMountArg } from '@fullcalendar/core';
+import type {
+  EventContentArg,
+  EventClickArg,
+  EventApi,
+  DayCellMountArg,
+} from '@fullcalendar/core';
 import type { DateClickArg } from '@fullcalendar/interaction';
 import type { CalendarEvent as ServiceCalendarEvent } from '@/services/calendarService';
 import { getEventTitleEmoji } from '@/utils/eventTitleEmoji';
@@ -85,7 +90,8 @@ function toFullCalendarEvents(
     const start = ev.start?.dateTime ?? ev.start?.date ?? '';
     const end = ev.end?.dateTime ?? ev.end?.date ?? start;
     const color = ev.color ?? calendarColors[ev.calendarId] ?? defaultColor;
-    const memberName = calendarNames?.[ev.calendarId] ?? ev.calendarId.slice(0, 8);
+    const memberName =
+      calendarNames?.[ev.calendarId] ?? ev.calendarId.slice(0, 8);
     return {
       id: ev.id,
       title: ev.summary || '(No title)',
@@ -134,7 +140,8 @@ function CalendarViewInner({
   const handleEventClick = useCallback(
     (arg: EventClickArg) => {
       arg.jsEvent.preventDefault();
-      const raw = (arg.event.extendedProps as { raw?: ServiceCalendarEvent }).raw;
+      const raw = (arg.event.extendedProps as { raw?: ServiceCalendarEvent })
+        .raw;
       if (raw && !longPressFired.current) onEventClick?.(raw, arg.el);
       longPressFired.current = false;
     },
@@ -152,7 +159,8 @@ function CalendarViewInner({
   const handleEventDidMount = useCallback(
     (arg: { el: HTMLElement; event: EventApi }) => {
       const el = arg.el;
-      const raw = (arg.event.extendedProps as { raw?: ServiceCalendarEvent }).raw;
+      const raw = (arg.event.extendedProps as { raw?: ServiceCalendarEvent })
+        .raw;
       if (!raw || !onEventLongPress) return;
 
       const startTouch = { x: 0, y: 0 };
@@ -200,26 +208,36 @@ function CalendarViewInner({
   );
 
   const handleEventWillUnmount = useCallback((arg: { el: HTMLElement }) => {
-    const cleanup = (arg.el as any).__chronosCleanup as (() => void) | undefined;
+    const cleanup = (arg.el as any).__chronosCleanup as
+      | (() => void)
+      | undefined;
     if (cleanup) cleanup();
   }, []);
 
   const handleDayCellDidMount = useCallback(
     (arg: DayCellMountArg) => {
       if (!onDateDoubleClick) return;
-      const date = arg.date instanceof Date ? arg.date : new Date(arg.date as string | number);
+      const date =
+        arg.date instanceof Date
+          ? arg.date
+          : new Date(arg.date as string | number);
       const handler = () => onDateDoubleClick(date);
       arg.el.addEventListener('dblclick', handler);
-      (arg.el as HTMLElement & { __chronosDayDblclick?: () => void }).__chronosDayDblclick = handler;
+      (
+        arg.el as HTMLElement & { __chronosDayDblclick?: () => void }
+      ).__chronosDayDblclick = handler;
     },
     [onDateDoubleClick]
   );
 
   const handleDayCellWillUnmount = useCallback((arg: DayCellMountArg) => {
-    const handler = (arg.el as HTMLElement & { __chronosDayDblclick?: () => void }).__chronosDayDblclick;
+    const handler = (
+      arg.el as HTMLElement & { __chronosDayDblclick?: () => void }
+    ).__chronosDayDblclick;
     if (handler) {
       arg.el.removeEventListener('dblclick', handler);
-      delete (arg.el as HTMLElement & { __chronosDayDblclick?: () => void }).__chronosDayDblclick;
+      delete (arg.el as HTMLElement & { __chronosDayDblclick?: () => void })
+        .__chronosDayDblclick;
     }
   }, []);
 
@@ -241,7 +259,10 @@ function CalendarViewInner({
 
     const initialClass = `chronos-event-initial${isEmoji ? ' chronos-event-initial--emoji' : ''}`;
     const initialEl = `<span class="${initialClass}" style="background-color:${escapeHtml(borderColor)};color:#fff">${isEmoji ? displayIcon : escapeHtml(displayIcon)}</span>`;
-    const timeEl = !isAllDay && timeText ? `<span class="chronos-event-time">${timeText}</span>` : '';
+    const timeEl =
+      !isAllDay && timeText
+        ? `<span class="chronos-event-time">${timeText}</span>`
+        : '';
     const titleEl = `<span class="chronos-event-title">${escapeHtml(title)}</span>`;
 
     const html = `
