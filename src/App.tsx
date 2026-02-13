@@ -23,13 +23,6 @@ function App() {
       .catch(() => setAuthenticated(false))
   }, [])
 
-  // Disable double-tap zoom (e.g. Chrome on macOS with external touchscreen)
-  useEffect(() => {
-    const preventDoubleTapZoom = (e: MouseEvent) => e.preventDefault()
-    document.addEventListener('dblclick', preventDoubleTapZoom, { passive: false })
-    return () => document.removeEventListener('dblclick', preventDoubleTapZoom)
-  }, [])
-
   useEffect(() => {
     getConfig().then(setConfig)
   }, [])

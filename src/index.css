@@ -55,10 +55,6 @@
   [data-theme="dark-plum"] { --chronos-bg-gradient: linear-gradient(160deg, #1a1625 0%, #2e1065 40%, #3b0764 100%); }
 }
 
-html {
-  touch-action: manipulation; /* Disable double-tap zoom (e.g. Chrome on macOS with external touchscreen) */
-}
-
 body {
   margin: 0;
   font-family: var(--chronos-font-sans);
